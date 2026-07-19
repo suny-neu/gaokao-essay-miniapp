@@ -1,0 +1,10 @@
+<view class="alert-item tone-{{tone}}">
+  <view class="alert-accent"></view>
+  <view class="alert-main">
+    <view class="alert-head">
+      <text class="alert-badge">{{badge}}</text>
+      <text class="alert-title">{{title}}</text>
+    </view>
+    <text class="alert-subtitle">{{subtitle}}</text>
+  </view>
+</view>

@@ -1,0 +1,59 @@
+<view class="report-page">
+  <view class="report-shell" wx:if="{{ready}}">
+    <panel-card extraClass="summary-card">
+      <view class="summary-head">
+        <text class="summary-label">总评</text>
+        <text class="summary-delta">{{deltaText}}</text>
+      </view>
+      <view class="summary-score-row">
+        <text class="summary-score num">{{scoreValue}}</text>
+        <text class="summary-suffix">{{scoreSuffix}}</text>
+      </view>
+      <view class="dim-list">
+        <view wx:for="{{dims}}" wx:key="label" class="dim-row {{item.label === '结构' ? 'weak' : ''}}">
+          <text class="dim-label">{{item.label}}</text>
+          <view class="dim-bar"><view class="dim-fill" style="width: {{item.width}}%;"></view></view>
+          <text class="dim-score num">{{item.score}}</text>
+        </view>
+      </view>
+    </panel-card>
+
+    <view class="section-head">
+      <text class="section-name">错误清单</text>
+      <text class="section-count">{{errors.length}}</text>
+    </view>
+    <panel-card extraClass="list-card">
+      <view wx:for="{{errors}}" wx:key="index" class="error-item">
+        <text class="tag tag-err">{{item.tag}}</text>
+        <view class="error-body">
+          <text class="error-from">{{item.from}}</text>
+          <text class="error-arrow">→</text>
+          <text class="error-to">{{item.to}}</text>
+        </view>
+      </view>
+    </panel-card>
+
+    <view class="section-head">
+      <text class="section-name">亮点</text>
+    </view>
+    <panel-card extraClass="list-card">
+      <view wx:for="{{highlights}}" wx:key="index" class="highlight-item">
+        <text class="tag tag-good">{{item.tag}}</text>
+        <text class="highlight-text">{{item.text}}</text>
+      </view>
+    </panel-card>
+
+    <view class="action-row">
+      <button class="report-btn report-btn-secondary" bindtap="goWrite">查看写作页</button>
+      <button class="report-btn report-btn-primary" bindtap="goHome">回到首页</button>
+    </view>
+  </view>
+
+  <view class="report-shell" wx:else>
+    <panel-card extraClass="empty-card">
+      <text class="empty-title">{{fallbackTitle}}</text>
+      <text class="empty-text">先完成一次作文生成或严格批改，报告页就会出现真实数据。</text>
+      <button class="report-btn report-btn-primary solo-btn" bindtap="goWrite">去写作文</button>
+    </panel-card>
+  </view>
+</view>

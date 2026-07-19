@@ -1,0 +1,9 @@
+{
+  "desc": "Allow all mini program pages to be indexed by the default sitemap rules.",
+  "rules": [
+    {
+      "action": "allow",
+      "page": "*"
+    }
+  ]
+}

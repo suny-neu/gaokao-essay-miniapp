@@ -1,0 +1,69 @@
+<view class="page">
+  <scroll-view scroll-y="true" class="page-scroll">
+    <view class="stack">
+      <view class="hero-card">
+        <text class="eyebrow">历史记录</text>
+        <text class="hero-title">按模式、题型、状态筛选</text>
+        <text class="hero-text">云端记录和本地缓存会一起展示，点开即可回看结果。</text>
+      </view>
+
+      <view class="section-card">
+        <text class="section-title">模式</text>
+        <view class="filter-row">
+          <view wx:for="{{modeOptions}}" wx:key="id" class="filter-chip {{filterMode === item.id ? 'active' : ''}}" bindtap="chooseFilterMode" data-mode="{{item.id}}">
+            {{item.label}}
+          </view>
+        </view>
+        <text class="section-title" style="margin-top: 20rpx;">题型</text>
+        <view class="filter-row">
+          <view wx:for="{{essayTypeOptions}}" wx:key="id" class="filter-chip {{filterEssayType === item.id ? 'active' : ''}}" bindtap="chooseFilterEssayType" data-type="{{item.id}}">
+            {{item.label}}
+          </view>
+        </view>
+        <text class="section-title" style="margin-top: 20rpx;">状态</text>
+        <view class="filter-row">
+          <view wx:for="{{statusOptions}}" wx:key="id" class="filter-chip {{filterTaskStatus === item.id ? 'active' : ''}}" bindtap="chooseFilterTaskStatus" data-status="{{item.id}}">
+            {{item.label}}
+          </view>
+        </view>
+      </view>
+
+      <view wx:if="{{loadError}}" class="section-card">
+        <text class="section-title">加载失败</text>
+        <text class="section-text">{{loadError}}</text>
+        <view class="button-row">
+          <button class="primary-btn" bindtap="retryLoad">重新加载</button>
+        </view>
+      </view>
+
+      <view wx:elif="{{!history.length && !loading}}" class="section-card empty-box">
+        <text class="section-title">还没有历史记录</text>
+        <text class="empty-text">先做一次陪练或批改，结果就会出现在这里。</text>
+      </view>
+
+      <view wx:if="{{history.length}}" class="history-list">
+        <view wx:for="{{history}}" wx:key="id" class="history-card">
+          <view class="history-row">
+            <text class="card-title">{{item.modeLabel}} · {{item.essayTypeLabel}}</text>
+            <text class="pill">{{item.displayTime}}</text>
+          </view>
+          <view class="pill-row">
+            <text wx:if="{{item.bandLabel}}" class="pill">{{item.bandLabel}}</text>
+            <text wx:if="{{item.scoreText}}" class="pill">{{item.scoreText}}</text>
+            <text class="pill">{{item.taskStatus}}</text>
+          </view>
+          <text class="history-summary">{{item.summary}}</text>
+          <view class="button-row">
+            <button class="primary-btn" bindtap="openItem" data-id="{{item.id}}">打开</button>
+            <button class="secondary-btn" bindtap="removeItem" data-id="{{item.id}}">删除</button>
+          </view>
+        </view>
+      </view>
+
+      <view wx:if="{{history.length}}" class="button-row">
+        <button class="ghost-btn" bindtap="removeAll">按当前筛选清空</button>
+        <button wx:if="{{hasMore}}" class="secondary-btn" loading="{{loadingMore}}" bindtap="loadMore">加载更多</button>
+      </view>
+    </view>
+  </scroll-view>
+</view>

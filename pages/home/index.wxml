@@ -1,0 +1,71 @@
+<view class="dashboard-page">
+  <scroll-view scroll-y="true" class="dashboard-scroll">
+    <view class="dashboard-shell">
+      <view class="dashboard-topbar">
+        <view>
+          <text class="dashboard-title">你好，同学</text>
+          <text class="dashboard-subtitle">{{greetingText}}</text>
+        </view>
+        <view class="countdown-box">
+          <text class="countdown-num num">{{daysToGaokao}}</text>
+          <text class="countdown-unit">距高考(天)</text>
+        </view>
+      </view>
+
+      <panel-card extraClass="hero-card">
+        <text class="micro-heading">最近批改得分</text>
+        <view class="hero-row">
+          <view class="hero-score">
+            <text class="hero-big num">{{scoreSummary.value}}</text>
+            <text class="hero-of">/{{scoreSummary.max}}</text>
+          </view>
+          <view class="hero-meta">
+            <text wx:if="{{scoreSummary.deltaText}}" class="hero-delta">{{scoreSummary.deltaText}}</text>
+            <text class="hero-topic">{{scoreSummary.caption}}</text>
+          </view>
+        </view>
+        <view class="hero-bar" aria-role="progressbar" aria-valuenow="{{scoreSummary.percentText}}">
+          <view class="hero-bar-fill"></view>
+        </view>
+      </panel-card>
+
+      <view class="metrics-grid">
+        <metric-card wx:for="{{statCards}}" wx:key="label" label="{{item.label}}" value="{{item.value}}" unit="{{item.unit}}" helper="{{item.helper}}"></metric-card>
+      </view>
+
+      <text class="section-title">需要关注</text>
+      <view class="alert-list">
+        <alert-item wx:for="{{focusCards}}" wx:key="id" badge="{{item.badge}}" title="{{item.title}}" subtitle="{{item.subtitle}}" tone="{{item.tone}}" data-action="{{item.action}}" bindtap="handleFocusAction"></alert-item>
+      </view>
+
+      <text class="section-title">7 天得分趋势</text>
+      <panel-card extraClass="trend-card">
+        <view class="sparkline">
+          <view class="sparkline-area"></view>
+          <view wx:for="{{trendSegments}}" wx:key="index" class="sparkline-segment" style="{{item.style}}"></view>
+          <view wx:for="{{trendPoints}}" wx:key="index" class="sparkline-point" style="{{item.style}}"></view>
+        </view>
+      </panel-card>
+
+      <view class="action-row">
+        <button class="btn btn-primary" bindtap="goWrite">写作文</button>
+        <button class="btn btn-secondary" bindtap="goCoach">AI 陪练</button>
+        <button class="btn btn-ghost" bindtap="goReport">报告</button>
+      </view>
+
+      <view wx:if="{{footerHint}}" class="footer-note">
+        <text class="footer-note-text">{{footerHint}}</text>
+      </view>
+
+      <view wx:if="{{loading}}" class="state-box">
+        <text class="state-title">首页数据加载中</text>
+        <text class="state-text">正在同步学习档案和最近批改记录。</text>
+      </view>
+
+      <view wx:if="{{loadError}}" class="state-box state-box-soft">
+        <text class="state-title">已降级展示</text>
+        <text class="state-text">{{loadError}}</text>
+      </view>
+    </view>
+  </scroll-view>
+</view>

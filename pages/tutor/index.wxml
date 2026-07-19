@@ -1,0 +1,29 @@
+<view class="tutor-page">
+  <view class="tutor-shell">
+    <view class="chip-row type-row">
+      <view class="chip {{essayType === 'application' ? 'chip-on' : ''}}" data-type="application" bindtap="chooseEssayType">应用文</view>
+      <view class="chip {{essayType === 'continuation' ? 'chip-on' : ''}}" data-type="continuation" bindtap="chooseEssayType">读后续写</view>
+    </view>
+
+    <view class="chip-row">
+      <view wx:for="{{tabs}}" wx:key="id" class="chip {{activeTab === item.id ? 'chip-on' : ''}}" data-tab="{{item.id}}" bindtap="chooseTab">{{item.label}}</view>
+    </view>
+
+    <view class="chat-stack">
+      <view wx:for="{{messages}}" wx:key="id" class="chat-row {{item.role === 'me' ? 'chat-row-me' : 'chat-row-ai'}}">
+        <view class="bubble {{item.role === 'me' ? 'bubble-me' : 'bubble-ai'}}">
+          <text class="{{item.role === 'ai' ? 'ai-text' : ''}}">{{item.text}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="chip-row chip-row-bottom">
+      <view wx:for="{{quickActions}}" wx:key="*this" class="chip" data-label="{{item}}" bindtap="chooseQuickAction">{{item}}</view>
+    </view>
+
+    <view class="inputbar">
+      <input class="chat-input {{inputGhost ? 'ghost' : ''}}" value="{{inputText}}" bindinput="updateInput" bindfocus="onInputFocus" placeholder="{{inputGhost ? '' : '输入英文…'}}" />
+      <button class="send-btn" loading="{{loading}}" disabled="{{loading}}" bindtap="submitInput">➤</button>
+    </view>
+  </view>
+</view>

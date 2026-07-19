@@ -1,0 +1,134 @@
+.tutor-page {
+  min-height: 100vh;
+  background: var(--bg);
+}
+
+.tutor-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 24rpx 36rpx 40rpx;
+}
+
+.chip-row {
+  display: flex;
+  gap: 14rpx;
+  flex-wrap: wrap;
+}
+
+.chip-row-bottom {
+  margin-top: 24rpx;
+}
+
+.type-row {
+  margin-bottom: 16rpx;
+}
+
+.type-row .chip {
+  flex: 1;
+  text-align: center;
+}
+
+.chip {
+  padding: 12rpx 24rpx;
+  border-radius: 999rpx;
+  border: 2rpx solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 24rpx;
+  font-weight: 600;
+}
+
+.chip-on {
+  color: #fff;
+  border-color: transparent;
+  background: var(--accent);
+  box-shadow: 0 8rpx 20rpx rgba(79, 70, 229, 0.25);
+}
+
+.chat-stack {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 18rpx;
+  margin-top: 24rpx;
+}
+
+.chat-row {
+  display: flex;
+}
+
+.chat-row-ai {
+  justify-content: flex-start;
+}
+
+.chat-row-me {
+  justify-content: flex-end;
+}
+
+.bubble {
+  max-width: 82%;
+  padding: 20rpx 26rpx;
+  border-radius: 32rpx;
+  font-size: 26rpx;
+  line-height: 1.55;
+}
+
+.bubble-ai {
+  color: var(--text);
+  border: 2rpx solid var(--border);
+  border-bottom-left-radius: 12rpx;
+  background: var(--surface);
+  box-shadow: 0 2rpx 4rpx rgba(15, 23, 42, 0.04);
+}
+
+.bubble-me {
+  color: #fff;
+  border-bottom-right-radius: 12rpx;
+  background: linear-gradient(180deg, #6366f1, #4f46e5);
+  box-shadow: 0 8rpx 24rpx rgba(79, 70, 229, 0.25);
+}
+
+.ai-text {
+  color: #4338ca;
+}
+
+.inputbar {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-top: 24rpx;
+  padding: 12rpx 12rpx 12rpx 24rpx;
+  border: 2rpx solid var(--border);
+  border-radius: 999rpx;
+  background: var(--surface);
+  box-shadow: 0 12rpx 32rpx rgba(15, 23, 42, 0.06);
+}
+
+.chat-input {
+  flex: 1;
+  min-width: 0;
+  font-size: 27rpx;
+  color: var(--text);
+}
+
+.chat-input.ghost {
+  color: var(--muted);
+}
+
+.send-btn {
+  width: 76rpx;
+  height: 76rpx;
+  line-height: 76rpx;
+  padding: 0;
+  margin: 0;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 30rpx;
+  background: linear-gradient(180deg, #6366f1, #4f46e5);
+  box-shadow: 0 8rpx 20rpx rgba(79, 70, 229, 0.3);
+}
+
+.send-btn::after {
+  border: none;
+}

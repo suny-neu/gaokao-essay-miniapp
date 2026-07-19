@@ -1,0 +1,9 @@
+{
+  "navigationBarTitleText": "学习概览",
+  "enablePullDownRefresh": true,
+  "usingComponents": {
+    "panel-card": "/components/panel-card/index",
+    "metric-card": "/components/metric-card/index",
+    "alert-item": "/components/alert-item/index"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "pages": [
+    "pages/home/index",
+    "pages/write/index",
+    "pages/report/index",
+    "pages/tutor/index",
+    "pages/result/index",
+    "pages/history/index",
+    "pages/checklist/index",
+    "pages/editor/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "高考英语作文助手",
+    "navigationBarBackgroundColor": "#f4f6fb",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#f4f6fb",
+    "backgroundTextStyle": "light"
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

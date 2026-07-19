@@ -1,0 +1,46 @@
+<view class="write-page">
+  <view class="write-shell">
+    <view class="type-switch">
+      <view class="type-chip {{essayType === 'application' ? 'type-chip-on' : ''}}" data-type="application" bindtap="chooseEssayType">应用文</view>
+      <view class="type-chip {{essayType === 'continuation' ? 'type-chip-on' : ''}}" data-type="continuation" bindtap="chooseEssayType">读后续写</view>
+    </view>
+
+    <panel-card extraClass="topic-card">
+      <view class="tag tag-type">{{taskTag}}</view>
+      <text class="topic-text essay-font">{{promptText}}</text>
+      <view class="req-row">
+        <text wx:for="{{requirements}}" wx:key="*this" class="req-item">• {{item}}</text>
+      </view>
+    </panel-card>
+
+    <view class="word-count">
+      <view class="word-count-top">
+        <text class="word-count-label">已写词数</text>
+        <text class="word-count-value"><text class="num strong">{{wordCount}}</text> / {{targetWordCount}}</text>
+      </view>
+      <view class="bar">
+        <view class="bar-fill" style="width: {{wordCountPercent}}%;"></view>
+      </view>
+    </view>
+
+    <button class="write-btn write-btn-secondary ocr-btn" loading="{{ocrLoading}}" disabled="{{ocrLoading || loading}}" bindtap="chooseImageAndOcr">📸 拍照识别手写稿</button>
+
+    <panel-card extraClass="draft-card">
+      <textarea class="draft-input essay-font" value="{{draftText}}" bindinput="handleDraftInput" maxlength="-1"></textarea>
+    </panel-card>
+
+    <view class="hint-box">
+      <text class="hint-icon">💡</text>
+      <text class="hint-text">建议用 <text class="hint-strong">“{{aiHint.to}}”</text> 替换 <text class="hint-from">“{{aiHint.from}}”</text>，更正式。</text>
+    </view>
+
+    <view wx:if="{{submitStatus}}" class="submit-status">
+      <text class="submit-status-text">{{submitStatus}}</text>
+    </view>
+
+    <view class="action-stack">
+      <button class="write-btn write-btn-primary" loading="{{loading}}" disabled="{{loading}}" bindtap="goFormalEditor">提交批改</button>
+      <button class="write-btn write-btn-secondary" bindtap="goTutor">先去 AI 陪练</button>
+    </view>
+  </view>
+</view>

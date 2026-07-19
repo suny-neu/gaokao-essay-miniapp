@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "写作文",
+  "usingComponents": {
+    "panel-card": "/components/panel-card/index"
+  }
+}

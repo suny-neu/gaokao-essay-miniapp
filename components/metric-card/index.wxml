@@ -1,0 +1,6 @@
+<view class="metric-card">
+  <text class="metric-value num">{{value}}</text>
+  <text wx:if="{{unit}}" class="metric-unit">{{unit}}</text>
+  <text class="metric-label">{{label}}</text>
+  <text class="metric-helper">{{helper}}</text>
+</view>

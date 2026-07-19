@@ -1,0 +1,56 @@
+<view class="page">
+  <scroll-view scroll-y="true" class="page-scroll">
+    <view class="stack">
+      <view class="hero-card">
+        <text class="eyebrow">上线清单</text>
+        <text class="hero-title">把联调、域名、隐私和审核事项逐项关掉</text>
+        <text class="hero-text">这页会同时检查前端当前配置和后端健康状态，帮助你在提审前把明显风险收干净。</text>
+        <view class="pill-row">
+          <text class="pill">{{progressText}}</text>
+          <text class="pill">{{lastCheckedAt}}</text>
+        </view>
+      </view>
+
+      <view class="section-card">
+        <text class="section-title">运行时检查</text>
+        <view class="runtime-list">
+          <view wx:for="{{runtimeChecks}}" wx:key="id" class="runtime-card {{item.status}}">
+            <view class="runtime-row">
+              <text class="card-title">{{item.label}}</text>
+              <text class="badge-{{item.status}}">{{item.status}}</text>
+            </view>
+            <text class="runtime-detail">{{item.detail}}</text>
+          </view>
+        </view>
+      </view>
+
+      <view wx:if="{{backendHealth}}" class="section-card">
+        <view class="runtime-row">
+          <text class="section-title">{{backendHealth.title}}</text>
+          <text class="badge-{{backendHealth.tone}}">{{backendHealth.badge}}</text>
+        </view>
+        <text class="section-text">{{backendHealth.summary}}</text>
+        <view wx:if="{{backendHealth.issues.length}}" class="issue-list">
+          <text wx:for="{{backendHealth.issues}}" wx:key="*this" class="issue-text">- {{item}}</text>
+        </view>
+      </view>
+
+      <view class="section-card">
+        <text class="section-title">手动核对项</text>
+        <view class="manual-list">
+          <view wx:for="{{manualItems}}" wx:key="id" class="manual-card" bindtap="toggleManualItem" data-id="{{item.id}}">
+            <view class="manual-row">
+              <text class="card-title">{{item.label}}</text>
+              <text class="badge-{{item.checked ? 'ready' : 'todo'}}">{{item.checked ? '已勾' : '待勾'}}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <view class="button-row">
+        <button class="primary-btn" bindtap="verifyPrivacyFlow">刷新隐私授权状态</button>
+        <button class="ghost-btn" bindtap="clearManualState">清空手动勾选</button>
+      </view>
+    </view>
+  </scroll-view>
+</view>

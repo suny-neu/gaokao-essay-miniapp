@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "批改报告",
+  "usingComponents": {
+    "panel-card": "/components/panel-card/index"
+  }
+}
