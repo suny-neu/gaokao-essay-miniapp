@@ -23,13 +23,10 @@ const profileOptions = {
 const runtimeInfo = getMiniProgramRuntimeInfo();
 const runtimeEnvVersion = String(runtimeInfo.envVersion || '').toLowerCase();
 const releaseProfileReady = getProfileConfigIssues(profileOptions.release, runtimeInfo).length === 0;
-const shouldUseReleaseProfile = releaseProfileReady && (
-  runtimeEnvVersion === 'trial'
-  || runtimeEnvVersion === 'release'
-  || !runtimeInfo.isDevtools
-);
+const shouldUseReleaseProfile = releaseProfileReady;
 
-// 正式域名已经预配置；开发者工具里仍优先保留本地联调，体验版 / 正式版 / 真机默认切线上。
+// 默认优先走线上：开发者工具/真机/体验版/正式版都直接连 https://api.gaokaoessay.cn。
+// 如需本地调试后端，请把 release.enabled 改为 false 或设置 apiBaseUrl 为本地地址。
 const activeProfile = shouldUseReleaseProfile ? 'release' : 'local';
 
 const config = {
@@ -38,6 +35,7 @@ const config = {
   runtimeEnvVersion,
   profileOptions,
   endpoint: '/api/gaokao-essay',
+  challengeEndpoint: '/api/gaokao-essay/challenge',
   authEndpoint: '/api/auth/wx-login',
   historyEndpoint: '/api/gaokao-essay/history',
   ocrEndpoint: '/api/ocr/extract',
@@ -54,6 +52,7 @@ const config = {
     lastResult: 'gaokao-essay-last-result',
     authToken: 'gaokao-essay-auth-token',
     openId: 'gaokao-essay-open-id',
+    userId: 'gaokao-essay-user-id',
     authExpiresAt: 'gaokao-essay-auth-expires-at',
     launchChecklist: 'gaokao-essay-launch-checklist',
     membershipState: 'gaokao-essay-membership-state'

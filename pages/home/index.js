@@ -1,11 +1,17 @@
 const { fetchStudyProfile, fetchAccountEntitlement, fetchBackendHealthStatus, fetchEssayHistoryPage, fetchEssayHistoryDetail } = require('../../utils/request');
 const { getHistory, saveHistoryItem } = require('../../utils/storage');
+const { isAuthSessionValid, getAuthToken, getOpenId, wechatLogin } = require('../../utils/auth');
 const { buildStudyProfile } = require('../../utils/study-profile');
 
 Page({
   data: {
     loading: true,
     loadError: '',
+    authState: {
+      loggedIn: false,
+      openIdMask: '',
+      logging: false
+    },
     daysToGaokao: 0,
     greetingText: '',
     countdownLabel: '',
@@ -22,6 +28,7 @@ Page({
   },
 
   onShow() {
+    this.refreshAuthState();
     this.loadDashboard();
   },
 
@@ -198,8 +205,54 @@ Page({
     return {
       title: '高考英语作文助手'
     };
+  },
+
+  refreshAuthState() {
+    const token = getAuthToken();
+    const openId = getOpenId();
+    const loggedIn = !!(token && openId && isAuthSessionValid());
+    this.setData({
+      authState: {
+        loggedIn,
+        logging: false,
+        openIdMask: loggedIn ? maskOpenId(openId) : ''
+      }
+    });
+  },
+
+  async handleHomeLogin() {
+    if (this.data.authState.logging) {
+      return;
+    }
+    this.setData({ 'authState.logging': true });
+    wx.showLoading({ title: '登录中' });
+    try {
+      await wechatLogin();
+      wx.hideLoading();
+      wx.showToast({ title: '登录成功', icon: 'success' });
+      this.refreshAuthState();
+    } catch (error) {
+      wx.hideLoading();
+      wx.showToast({ title: (error && error.message) || '登录失败', icon: 'none' });
+      this.setData({ 'authState.logging': false });
+    }
+  },
+
+  goAuth() {
+    if (this.data.authState.loggedIn) {
+      wx.navigateTo({ url: '/pages/login/index' });
+    } else {
+      this.handleHomeLogin();
+    }
   }
 });
+
+function maskOpenId(openId) {
+  if (!openId || openId.length <= 10) {
+    return openId;
+  }
+  return `${openId.slice(0, 6)}…${openId.slice(-4)}`;
+}
 
 function buildDashboardViewModel({ profile, entitlement, health, history, gradeHistory }) {
   const daysToGaokao = calculateGaokaoCountdown();

@@ -12,6 +12,16 @@
         </view>
       </view>
 
+      <view class="auth-bar {{authState.loggedIn ? 'auth-bar-on' : ''}}" bindtap="goAuth">
+        <view class="auth-bar-icon">{{authState.loggedIn ? '✅' : '🔓'}}</view>
+        <view class="auth-bar-text">
+          <text class="auth-bar-title">{{authState.loggedIn ? '已登录' : '未登录'}}</text>
+          <text class="auth-bar-sub">{{authState.loggedIn ? authState.openIdMask : '点击微信登录，同步记录与会员'}}</text>
+        </view>
+        <button wx:if="{{!authState.loggedIn}}" class="auth-bar-btn" catchtap="handleHomeLogin" loading="{{authState.logging}}">微信登录</button>
+        <text wx:else class="auth-bar-enter">管理 ›</text>
+      </view>
+
       <panel-card extraClass="hero-card">
         <text class="micro-heading">最近批改得分</text>
         <view class="hero-row">

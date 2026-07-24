@@ -9,7 +9,7 @@ Page({
       { id: 'mock', label: '模拟写作' }
     ],
     activeTab: 'topic',
-    essayType,
+    essayType: 'application',
     quickActions: ['换话题', '给提示', '批改这句'],
     inputText: '',
     inputGhost: false,

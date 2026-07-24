@@ -153,11 +153,38 @@ function clearEssayHistory(filters = {}, sourceType = 'remote') {
   });
 }
 
+async function fetchChallenge(token) {
+  try {
+    const res = await new Promise((resolve, reject) => {
+      wx.request({
+        url: `${config.apiBaseUrl}${config.challengeEndpoint}`,
+        method: 'GET',
+        timeout: 8000,
+        header: {
+          'content-type': 'application/json',
+          Authorization: token ? `Bearer ${token}` : ''
+        },
+        success: resolve,
+        fail: reject
+      });
+    });
+    const parsed = parseRequestPayload(res.data);
+    const apiResponse = unwrapApiResponse(parsed);
+    if (res.statusCode >= 200 && res.statusCode < 300 && !apiResponse.error) {
+      return String((apiResponse.data && apiResponse.data.challenge) || '');
+    }
+    return '';
+  } catch (e) {
+    return '';
+  }
+}
+
 async function requestRemote(payload, handlers = {}, hasRetried = false) {
   assertRemoteConfigReady();
   const authContext = await prepareAuthorizedContext();
   const token = authContext.token;
   const openId = authContext.openId;
+  const challenge = await fetchChallenge(token);
   const requestData = {
     ...payload,
     wxCode: authContext.loginCode,
@@ -178,7 +205,8 @@ async function requestRemote(payload, handlers = {}, hasRetried = false) {
       responseType: 'arraybuffer',
       header: {
         'content-type': 'application/json',
-        Authorization: token ? `Bearer ${token}` : ''
+        Authorization: token ? `Bearer ${token}` : '',
+        'X-Challenge': challenge || ''
       },
       data: requestData,
       success(res) {
@@ -268,6 +296,7 @@ async function uploadOcrImage(options = {}, hasRetried = false) {
   }
 
   const authContext = await prepareAuthorizedContext();
+  const challenge = await fetchChallenge(authContext.token);
 
   return new Promise((resolve, reject) => {
     wx.uploadFile({
@@ -276,7 +305,8 @@ async function uploadOcrImage(options = {}, hasRetried = false) {
       name: 'file',
       timeout: 30000,
       header: {
-        Authorization: authContext.token ? `Bearer ${authContext.token}` : ''
+        Authorization: authContext.token ? `Bearer ${authContext.token}` : '',
+        'X-Challenge': challenge || ''
       },
       formData: {
         scene
