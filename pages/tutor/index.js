@@ -26,6 +26,7 @@ const TUTOR_CONFIG = {
 };
 const { uid } = require('../../utils/format');
 const { submitTaskAndOpenReport, resolveTaskRequestError, shouldReuseClientRequestId } = require('../../utils/task-flow');
+const { offerAdRewardDialog, isAdRewardAvailable } = require('../../utils/ad-reward');
 
 Page({
   data: {
@@ -161,6 +162,16 @@ Page({
           this.setData({
             submitRequestId: ''
           });
+        }
+        const code = String((error && error.code) || '').trim();
+        if ((code === 'TRIAL_LIMIT_REACHED' || code === 'TRIAL_DAILY_LIMIT_REACHED') && isAdRewardAvailable()) {
+          this.setData({ loading: false });
+          offerAdRewardDialog()
+            .then(() => {
+              wx.showToast({ title: '已获得批改次数', icon: 'success' });
+            })
+            .catch(() => {});
+          return;
         }
         const message = resolveTaskRequestError(error);
         this.setData({

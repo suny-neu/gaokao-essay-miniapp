@@ -47,6 +47,15 @@ function fetchStudyProfile(essayType = 'application') {
     .then((data) => normalizeStudyProfile(data));
 }
 
+function grantAdReward() {
+  const { getDeviceId } = require('./device-id');
+  return requestJson(config.adRewardGrantEndpoint, {
+    method: 'POST',
+    data: {},
+    timeout: 10000
+  });
+}
+
 function fetchBillingPlans() {
   return requestJson(config.billingPlansEndpoint);
 }
@@ -1079,6 +1088,7 @@ module.exports = {
   extractOcrText,
   fetchAccountEntitlement,
   fetchStudyProfile,
+  grantAdReward,
   fetchBillingPlans,
   activateMembershipPlan,
   fetchBackendHealthStatus,

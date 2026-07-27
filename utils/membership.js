@@ -18,6 +18,8 @@ function buildEmptyEntitlement() {
     subscriptionExpiresAt: '',
     subscriptionAutoRenew: false,
     subscriptionProvider: '',
+    adRewardEnabled: true,
+    adRewardCredits: 0,
     serverTime: ''
   };
 }
@@ -59,12 +61,16 @@ function buildEntitlementCard(entitlement = {}) {
   const remaining = Number.isFinite(parsedRemaining) ? Math.max(parsedRemaining, 0) : Math.max(limit - used, 0);
   const progressPercent = Math.min(100, Math.round((used / limit) * 100));
   const isTotalTrial = policy === 'total';
+  const adRewardAvailable = !normalized.subscriptionActive && normalized.adRewardEnabled;
+  const adRewardCredits = Math.max(Number(normalized.adRewardCredits) || 0, 0);
 
   return {
     eyebrow: '试用额度',
     title: remaining > 0
       ? (isTotalTrial ? `还剩 ${remaining} 次体验` : `今日还剩 ${remaining} 次`)
-      : (isTotalTrial ? '免费体验已用完' : '今日试用已用完'),
+      : (adRewardAvailable && adRewardCredits > 0
+          ? `广告奖励 ${adRewardCredits} 次`
+          : (isTotalTrial ? '免费体验已用完' : '今日试用已用完')),
     subtitle: isTotalTrial
       ? `新用户总共可体验 ${limit} 次，成功生成或批改后才会扣减。`
       : (normalized.trialResetAt
@@ -72,13 +78,17 @@ function buildEntitlementCard(entitlement = {}) {
           : `每天可试用 ${limit} 次。`),
     tags: [
       `已用 ${used} / ${limit}`,
-      remaining > 0 ? `还能再用 ${remaining} 次` : '建议开通包月或包年',
+      adRewardAvailable
+        ? (adRewardCredits > 0 ? `广告奖励 ${adRewardCredits} 次可用` : '用完可看广告得次数')
+        : (remaining > 0 ? `还能再用 ${remaining} 次` : '建议开通包月或包年'),
       isTotalTrial ? '陪练 / 批改共用' : '生成 / 批改共用'
     ],
     progressPercent,
     progressLabel: remaining > 0
       ? '当前仍可继续使用'
-      : (isTotalTrial ? '试用已结束，会员可继续不限次使用' : '重置后会恢复试用次数'),
+      : (adRewardAvailable
+          ? '看广告可以继续获得批改次数'
+          : (isTotalTrial ? '试用已结束，会员可继续不限次使用' : '重置后会恢复试用次数')),
     actionLabel: '查看套餐'
   };
 }

@@ -41,11 +41,13 @@ const config = {
   ocrEndpoint: '/api/ocr/extract',
   entitlementEndpoint: '/api/account/entitlement',
   studyProfileEndpoint: '/api/account/study-profile',
+  adRewardGrantEndpoint: '/api/account/ad-reward/grant',
   billingPlansEndpoint: '/api/billing/plans',
   debugSubscriptionEndpoint: '/api/billing/subscription/debug-activate',
   subscriptionCreateOrderEndpoint: '/api/billing/subscription/create-order',
   billingOrderStatusEndpoint: '/api/billing/orders',
   healthEndpoint: '/api/health',
+  adRewardAdUnitId: 'adunit-xxxxxxxxxxxxxxxx',
   enableChunked: true,
   storageKeys: {
     history: 'gaokao-essay-history',

@@ -1,6 +1,7 @@
 const { uid } = require('../../utils/format');
 const { submitTaskAndOpenReport, resolveTaskRequestError, shouldReuseClientRequestId } = require('../../utils/task-flow');
 const { extractOcrText } = require('../../utils/request');
+const { offerAdRewardDialog, isAdRewardAvailable } = require('../../utils/ad-reward');
 const {
   normalizeQuestionFields,
   hasCompleteContinuationQuestion,
@@ -391,6 +392,10 @@ Page({
           submitRequestId: ''
         });
       }
+      if (isQuotaExhaustedError(error) && isAdRewardAvailable()) {
+        this.handleAdRewardOffer();
+        return;
+      }
       const message = resolveTaskRequestError(error);
       this.setData({
         submitStatus: `提交失败：${message}`
@@ -410,6 +415,22 @@ Page({
     this.stopReviewProgress();
   },
 
+  handleAdRewardOffer() {
+    this.setData({
+      submitStatus: '免费次数已用完，看广告可继续',
+      loading: false
+    });
+    this.stopReviewProgress();
+    offerAdRewardDialog()
+      .then(() => {
+        wx.showToast({ title: '已获得批改次数', icon: 'success' });
+        this.setData({ loading: false });
+      })
+      .catch(() => {
+        this.setData({ loading: false });
+      });
+  },
+
   refreshWordCount(text) {
     const words = String(text || '').trim().match(/[A-Za-z]+(?:'[A-Za-z]+)?/g) || [];
     this.setData({
@@ -418,3 +439,8 @@ Page({
     });
   }
 });
+
+function isQuotaExhaustedError(error) {
+  const code = String((error && error.code) || '').trim();
+  return code === 'TRIAL_LIMIT_REACHED' || code === 'TRIAL_DAILY_LIMIT_REACHED';
+}
