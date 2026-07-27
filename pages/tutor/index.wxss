@@ -54,6 +54,36 @@
   margin-top: 24rpx;
 }
 
+.mode-guide {
+  margin-top: 20rpx;
+  padding: 20rpx 24rpx;
+  border: 2rpx solid #dddafe;
+  border-radius: 24rpx;
+  background: #f7f7ff;
+}
+
+.guide-row {
+  display: flex;
+  gap: 18rpx;
+  line-height: 1.5;
+}
+
+.guide-row + .guide-row {
+  margin-top: 10rpx;
+}
+
+.guide-label {
+  flex: 0 0 auto;
+  color: #4f46e5;
+  font-size: 23rpx;
+  font-weight: 700;
+}
+
+.guide-text {
+  color: var(--text);
+  font-size: 23rpx;
+}
+
 .chat-row {
   display: flex;
 }
@@ -108,7 +138,11 @@
 .chat-input {
   flex: 1;
   min-width: 0;
+  min-height: 76rpx;
+  max-height: 220rpx;
+  padding: 16rpx 0;
   font-size: 27rpx;
+  line-height: 1.5;
   color: var(--text);
 }
 

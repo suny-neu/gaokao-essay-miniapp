@@ -1,4 +1,5 @@
 const { getLastResult, normalizeGradeAnalysis } = require('../../utils/storage');
+const { buildReportViewModel } = require('../../utils/report-view-model');
 
 Page({
   data: {
@@ -7,10 +8,10 @@ Page({
     pageTitle: '批改报告',
     modeLabel: '严格批改',
     scoreVisible: true,
-    scoreText: '21/25 · 84%',
-    scoreValue: '21',
-    scoreSuffix: '/25 · 84%',
-    deltaText: '↑ +3',
+    scoreText: '',
+    scoreValue: '',
+    scoreSuffix: '',
+    deltaText: '',
     dims: [],
     errors: [],
     highlights: [],
@@ -27,21 +28,24 @@ Page({
     }
 
     const analysis = normalizeGradeAnalysis(result.analysis);
-    const isCoach = result.mode === 'coach';
-    const scoreParts = buildScoreParts(result.scoreText);
+    const viewModel = buildReportViewModel({
+      ...result,
+      analysis
+    });
+    const isCoach = viewModel.mode === 'coach';
     this.setData({
       ready: true,
-      mode: result.mode || 'grade',
-      pageTitle: isCoach ? '陪练结果' : '批改报告',
-      modeLabel: result.modeLabel || (isCoach ? '作文陪练' : '严格批改'),
-      scoreVisible: !isCoach,
-      scoreText: scoreParts.value + scoreParts.suffix,
-      scoreValue: scoreParts.value,
-      scoreSuffix: scoreParts.suffix,
-      deltaText: parseDeltaText(result.scoreText),
-      dims: buildDims(result, analysis),
-      errors: buildErrors(analysis),
-      highlights: buildHighlights(result, analysis),
+      mode: viewModel.mode,
+      pageTitle: viewModel.pageTitle,
+      modeLabel: viewModel.modeLabel,
+      scoreVisible: viewModel.scoreVisible,
+      scoreText: viewModel.scoreValue + viewModel.scoreSuffix,
+      scoreValue: viewModel.scoreValue,
+      scoreSuffix: viewModel.scoreSuffix,
+      deltaText: viewModel.deltaText,
+      dims: viewModel.dims,
+      errors: viewModel.errors,
+      highlights: viewModel.highlights,
       coachBlocks: buildCoachBlocks(result),
       rawContent: String(result.content || '').trim(),
       fallbackTitle: isCoach ? '还没有陪练记录' : '还没有批改报告'
@@ -66,66 +70,6 @@ Page({
     });
   }
 });
-
-function buildScoreParts(scoreText) {
-  const text = String(scoreText || '').trim();
-  if (!text) {
-    return { value: '待生成', suffix: '' };
-  }
-  const match = text.match(/(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)/);
-  if (!match) {
-    return { value: text, suffix: '' };
-  }
-  const value = Number(match[1]);
-  const max = Number(match[2]);
-  const percent = max > 0 ? Math.round(value / max * 100) : 0;
-  return { value: match[1], suffix: `/${match[2]} · ${percent}%` };
-}
-
-function parseDeltaText(scoreText) {
-  return String(scoreText || '').includes('/') ? '↑ +3' : '待对比';
-}
-
-function buildDims(result, analysis) {
-  const parsed = String(result.scoreText || '').match(/(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)/);
-  const total = parsed ? Number(parsed[1]) : 21;
-  return [
-    { label: '内容', width: 80, score: `${Math.min(10, Math.max(6, Math.round(total * 0.38 * 10) / 10))}/10` },
-    { label: '语言', width: 70, score: `${Math.min(10, Math.max(5, Math.round(total * 0.33 * 10) / 10))}/10` },
-    { label: '结构', width: analysis && analysis.structureDiagnosis ? 55 : 62, score: analysis && analysis.structureDiagnosis ? '5.5' : '6.2' },
-    { label: '词汇', width: analysis && analysis.languageDiagnosis ? 72 : 68, score: analysis && analysis.languageDiagnosis ? '72' : '68' }
-  ];
-}
-
-function buildErrors(analysis) {
-  const sentenceDiagnostics = analysis && Array.isArray(analysis.sentenceDiagnostics) ? analysis.sentenceDiagnostics : [];
-  const picked = sentenceDiagnostics.slice(0, 4).map((item) => ({
-    tag: '语法',
-    from: item.original || '原句待完善',
-    to: item.revision || item.diagnosis || '建议改写'
-  }));
-  if (picked.length) {
-    return picked;
-  }
-  return [
-    { tag: '语法', from: 'every year', to: 'annually' },
-    { tag: '拼写', from: 'recieve', to: 'receive' }
-  ];
-}
-
-function buildHighlights(result, analysis) {
-  const items = [];
-  if (result && result.summary) {
-    items.push({ tag: '任务', text: result.summary });
-  }
-  if (analysis && analysis.highlightDiagnosis) {
-    items.push({ tag: '亮点', text: analysis.highlightDiagnosis });
-  }
-  if (analysis && analysis.overallComment) {
-    items.push({ tag: '总评', text: analysis.overallComment });
-  }
-  return items.length ? items : [{ tag: '地道', text: '开头自然得体，整体表达比较稳。' }];
-}
 
 function buildCoachBlocks(result) {
   if (!result || result.mode !== 'coach') {

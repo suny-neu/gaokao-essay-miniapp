@@ -9,6 +9,17 @@
       <view wx:for="{{tabs}}" wx:key="id" class="chip {{activeTab === item.id ? 'chip-on' : ''}}" data-tab="{{item.id}}" bindtap="chooseTab">{{item.label}}</view>
     </view>
 
+    <view class="mode-guide">
+      <view class="guide-row">
+        <text class="guide-label">输入什么</text>
+        <text class="guide-text">{{inputGuide}}</text>
+      </view>
+      <view class="guide-row">
+        <text class="guide-label">你会得到</text>
+        <text class="guide-text">{{outputGuide}}</text>
+      </view>
+    </view>
+
     <view class="chat-stack">
       <view wx:for="{{messages}}" wx:key="id" class="chat-row {{item.role === 'me' ? 'chat-row-me' : 'chat-row-ai'}}">
         <view class="bubble {{item.role === 'me' ? 'bubble-me' : 'bubble-ai'}}">
@@ -22,7 +33,16 @@
     </view>
 
     <view class="inputbar">
-      <input class="chat-input {{inputGhost ? 'ghost' : ''}}" value="{{inputText}}" bindinput="updateInput" bindfocus="onInputFocus" placeholder="{{inputGhost ? '' : '输入英文…'}}" />
+      <textarea
+        class="chat-input {{inputGhost ? 'ghost' : ''}}"
+        value="{{inputText}}"
+        bindinput="updateInput"
+        bindfocus="onInputFocus"
+        placeholder="{{inputGhost ? '' : inputPlaceholder}}"
+        auto-height
+        maxlength="-1"
+        show-confirm-bar="{{false}}"
+      ></textarea>
       <button class="send-btn" loading="{{loading}}" disabled="{{loading}}" bindtap="submitInput">➤</button>
     </view>
   </view>

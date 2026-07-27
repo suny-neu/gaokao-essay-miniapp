@@ -1,9 +1,9 @@
 <view class="report-page">
   <view class="report-shell" wx:if="{{ready}}">
-    <panel-card extraClass="summary-card">
+    <panel-card wx:if="{{scoreVisible}}" extraClass="summary-card">
       <view class="summary-head">
         <text class="summary-label">总评</text>
-        <text class="summary-delta">{{deltaText}}</text>
+        <text wx:if="{{deltaText}}" class="summary-delta">{{deltaText}}</text>
       </view>
       <view class="summary-score-row">
         <text class="summary-score num">{{scoreValue}}</text>
@@ -13,33 +13,57 @@
         <view wx:for="{{dims}}" wx:key="label" class="dim-row {{item.label === '结构' ? 'weak' : ''}}">
           <text class="dim-label">{{item.label}}</text>
           <view class="dim-bar"><view class="dim-fill" style="width: {{item.width}}%;"></view></view>
-          <text class="dim-score num">{{item.score}}</text>
+          <text class="dim-score num">{{item.scoreText}}</text>
         </view>
       </view>
     </panel-card>
 
-    <view class="section-head">
-      <text class="section-name">错误清单</text>
+    <view wx:if="{{mode === 'coach'}}" class="coach-result">
+      <view class="section-head">
+        <text class="section-name">本次陪练建议</text>
+      </view>
+      <panel-card extraClass="list-card">
+        <view wx:for="{{coachBlocks}}" wx:key="label" class="coach-block">
+          <text class="coach-label">{{item.label}}</text>
+          <text class="coach-text">{{item.text}}</text>
+        </view>
+      </panel-card>
+    </view>
+
+    <view wx:if="{{mode === 'grade'}}" class="section-head">
+      <text class="section-name">逐句修改建议</text>
       <text class="section-count">{{errors.length}}</text>
     </view>
-    <panel-card extraClass="list-card">
+    <panel-card wx:if="{{mode === 'grade'}}" extraClass="list-card">
       <view wx:for="{{errors}}" wx:key="index" class="error-item">
         <text class="tag tag-err">{{item.tag}}</text>
         <view class="error-body">
-          <text class="error-from">{{item.from}}</text>
-          <text class="error-arrow">→</text>
+          <text class="error-label">原句</text>
+          <text class="error-from {{item.isRealError ? 'real-error' : ''}}">
+            {{item.from}}
+          </text>
+
+          <text class="error-label">建议</text>
           <text class="error-to">{{item.to}}</text>
+
+          <text class="error-reason">说明：{{item.reason}}</text>
         </view>
+      </view>
+      <view wx:if="{{!errors.length}}" class="empty-section">
+        <text>本次没有返回逐句修改建议，请以总评和提分稿为准。</text>
       </view>
     </panel-card>
 
-    <view class="section-head">
+    <view wx:if="{{mode === 'grade'}}" class="section-head">
       <text class="section-name">亮点</text>
     </view>
-    <panel-card extraClass="list-card">
+    <panel-card wx:if="{{mode === 'grade'}}" extraClass="list-card">
       <view wx:for="{{highlights}}" wx:key="index" class="highlight-item">
         <text class="tag tag-good">{{item.tag}}</text>
         <text class="highlight-text">{{item.text}}</text>
+      </view>
+      <view wx:if="{{!highlights.length}}" class="empty-section">
+        <text>本次没有单独标注亮点。</text>
       </view>
     </panel-card>
 

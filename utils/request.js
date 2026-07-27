@@ -1,6 +1,8 @@
 const { config, getRemoteConfigIssues, isLocalhostUrl } = require('./config');
 const { countEnglishWords, uid } = require('./format');
 const { getAuthToken, getOpenId, getLoginCode, saveAuthSession, isAuthSessionValid, clearAuthSession } = require('./auth');
+const { normalizeScoreDimensions } = require('./report-view-model');
+const { getDeviceId } = require('./device-id');
 const {
   getHistory,
   normalizeSessionRecord,
@@ -39,8 +41,9 @@ function fetchAccountEntitlement() {
   return requestJson(config.entitlementEndpoint);
 }
 
-function fetchStudyProfile() {
-  return requestJson(config.studyProfileEndpoint)
+function fetchStudyProfile(essayType = 'application') {
+  const normalizedType = essayType === 'continuation' ? 'continuation' : 'application';
+  return requestJson(`${config.studyProfileEndpoint}?essayType=${encodeURIComponent(normalizedType)}`)
     .then((data) => normalizeStudyProfile(data));
 }
 
@@ -162,7 +165,8 @@ async function fetchChallenge(token) {
         timeout: 8000,
         header: {
           'content-type': 'application/json',
-          Authorization: token ? `Bearer ${token}` : ''
+          Authorization: token ? `Bearer ${token}` : '',
+          'X-Device-ID': getDeviceId()
         },
         success: resolve,
         fail: reject
@@ -200,13 +204,14 @@ async function requestRemote(payload, handlers = {}, hasRetried = false) {
     const requestTask = wx.request({
       url: `${config.apiBaseUrl}${config.endpoint}`,
       method: 'POST',
-      timeout: 45000,
+      timeout: 120000,
       enableChunked: !!config.enableChunked,
       responseType: 'arraybuffer',
       header: {
         'content-type': 'application/json',
         Authorization: token ? `Bearer ${token}` : '',
-        'X-Challenge': challenge || ''
+        'X-Challenge': challenge || '',
+        'X-Device-ID': getDeviceId()
       },
       data: requestData,
       success(res) {
@@ -306,7 +311,8 @@ async function uploadOcrImage(options = {}, hasRetried = false) {
       timeout: 30000,
       header: {
         Authorization: authContext.token ? `Bearer ${authContext.token}` : '',
-        'X-Challenge': challenge || ''
+        'X-Challenge': challenge || '',
+        'X-Device-ID': getDeviceId()
       },
       formData: {
         scene
@@ -534,7 +540,8 @@ function normalizeStudyProfile(data = {}) {
     secondaryActionLabel: String(data.secondaryActionLabel || '查看最近批改'),
     primaryActionKind: String(data.primaryActionKind || 'continue_grade'),
     secondaryActionKind: String(data.secondaryActionKind || 'view_latest_grade'),
-    suggestedEssayType: String(data.suggestedEssayType || '') === 'continuation' ? 'continuation' : 'application'
+    suggestedEssayType: String(data.suggestedEssayType || '') === 'continuation' ? 'continuation' : 'application',
+    growth: data.growth || null
   };
 }
 
@@ -1003,6 +1010,7 @@ function normalizeGradeAnalysis(analysis) {
     overallComment: String(analysis.overallComment || ''),
     secondDraftGuidance: String(analysis.secondDraftGuidance || ''),
     improvedEssay: String(analysis.improvedEssay || ''),
+    scoreDimensions: normalizeScoreDimensions(analysis.scoreDimensions),
     sentenceDiagnostics: Array.isArray(analysis.sentenceDiagnostics)
       ? analysis.sentenceDiagnostics
         .map((item) => ({

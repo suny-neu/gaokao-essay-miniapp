@@ -5,9 +5,97 @@
       <view class="type-chip {{essayType === 'continuation' ? 'type-chip-on' : ''}}" data-type="continuation" bindtap="chooseEssayType">读后续写</view>
     </view>
 
-    <panel-card extraClass="topic-card">
+    <panel-card wx:if="{{essayType === 'application'}}" extraClass="topic-card">
       <view class="tag tag-type">{{taskTag}}</view>
-      <text class="topic-text essay-font">{{promptText}}</text>
+      <textarea
+        class="topic-input essay-font"
+        value="{{promptText}}"
+        bindinput="handlePromptInput"
+        auto-height
+        maxlength="-1"
+        placeholder="请输入题目，或点击下方按钮拍照识别题目"
+      ></textarea>
+      <button
+        class="write-btn write-btn-secondary question-ocr-btn"
+        loading="{{questionOcrLoading}}"
+        disabled="{{questionOcrLoading || ocrLoading || loading}}"
+        bindtap="chooseQuestionImageAndOcr"
+      >
+        📷 拍照识别题目
+      </button>
+      <view class="req-row">
+        <text wx:for="{{requirements}}" wx:key="*this" class="req-item">• {{item}}</text>
+      </view>
+    </panel-card>
+
+    <panel-card wx:if="{{essayType === 'continuation'}}" extraClass="topic-card continuation-question-card">
+      <view class="question-card-head">
+        <view>
+          <view class="tag tag-type">{{taskTag}}</view>
+          <text class="field-label">题目材料</text>
+        </view>
+        <button
+          wx:if="{{!editingContinuationQuestion}}"
+          class="text-action"
+          bindtap="startEditingContinuationQuestion"
+        >编辑题目</button>
+      </view>
+
+      <view wx:if="{{editingContinuationQuestion}}">
+        <textarea
+          class="source-input essay-font"
+          value="{{sourceMaterial}}"
+          bindinput="handleSourceMaterialInput"
+          maxlength="-1"
+          placeholder="请粘贴读后续写原文，或拍照识别题目"
+        ></textarea>
+
+        <view class="starter-edit-block">
+          <text class="given-label">题目已给 · 第一段首句</text>
+          <textarea
+            class="starter-input essay-font"
+            value="{{paragraphOneStarter}}"
+            bindinput="handleParagraphOneInput"
+            auto-height
+            maxlength="-1"
+            placeholder="Paragraph 1:"
+          ></textarea>
+        </view>
+
+        <view class="starter-edit-block">
+          <text class="given-label">题目已给 · 第二段首句</text>
+          <textarea
+            class="starter-input essay-font"
+            value="{{paragraphTwoStarter}}"
+            bindinput="handleParagraphTwoInput"
+            auto-height
+            maxlength="-1"
+            placeholder="Paragraph 2:"
+          ></textarea>
+        </view>
+
+        <button
+          class="write-btn write-btn-secondary question-ocr-btn"
+          loading="{{questionOcrLoading}}"
+          disabled="{{questionOcrLoading || ocrLoading || loading}}"
+          bindtap="chooseQuestionImageAndOcr"
+        >📷 拍照识别题目</button>
+        <button class="text-action complete-question-action" bindtap="finishEditingContinuationQuestion">完成题目录入</button>
+      </view>
+
+      <view wx:else class="question-preview">
+        <text class="question-source essay-font">{{sourceMaterial}}</text>
+        <view class="given-sentence">
+          <text class="given-label">题目已给 · 第一段首句</text>
+          <text class="essay-font">{{paragraphOneStarter}}</text>
+        </view>
+        <view class="given-sentence">
+          <text class="given-label">题目已给 · 第二段首句</text>
+          <text class="essay-font">{{paragraphTwoStarter}}</text>
+        </view>
+        <text class="question-note">续写时请承接首句，不要重复抄写首句</text>
+      </view>
+
       <view class="req-row">
         <text wx:for="{{requirements}}" wx:key="*this" class="req-item">• {{item}}</text>
       </view>
@@ -23,13 +111,27 @@
       </view>
     </view>
 
-    <button class="write-btn write-btn-secondary ocr-btn" loading="{{ocrLoading}}" disabled="{{ocrLoading || loading}}" bindtap="chooseImageAndOcr">📸 拍照识别手写稿</button>
+    <text class="field-label draft-label">{{essayType === 'continuation' ? '我的续写' : '我的作文'}}</text>
+    <button
+      class="write-btn write-btn-secondary ocr-btn"
+      loading="{{ocrLoading}}"
+      disabled="{{ocrLoading || questionOcrLoading || loading}}"
+      bindtap="chooseImageAndOcr"
+    >
+      📷 {{essayType === 'continuation' ? '拍照识别续写' : '拍照识别作文'}}
+    </button>
 
     <panel-card extraClass="draft-card">
-      <textarea class="draft-input essay-font" value="{{draftText}}" bindinput="handleDraftInput" maxlength="-1"></textarea>
+      <textarea
+        class="draft-input essay-font"
+        value="{{draftText}}"
+        bindinput="handleDraftInput"
+        maxlength="-1"
+        placeholder="{{essayType === 'continuation' ? '请输入或粘贴你的两段续写' : '请输入或粘贴你的作文'}}"
+      ></textarea>
     </panel-card>
 
-    <view class="hint-box">
+    <view wx:if="{{essayType === 'application'}}" class="hint-box">
       <text class="hint-icon">💡</text>
       <text class="hint-text">建议用 <text class="hint-strong">“{{aiHint.to}}”</text> 替换 <text class="hint-from">“{{aiHint.from}}”</text>，更正式。</text>
     </view>

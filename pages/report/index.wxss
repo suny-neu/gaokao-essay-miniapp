@@ -13,6 +13,37 @@
   padding: 28rpx;
 }
 
+.empty-section {
+  padding: 18rpx 0;
+  color: var(--muted);
+  font-size: 24rpx;
+  line-height: 1.6;
+}
+
+.coach-block {
+  padding: 20rpx 0;
+  border-bottom: 2rpx solid var(--track);
+}
+
+.coach-block:last-child {
+  border-bottom: 0;
+}
+
+.coach-label {
+  display: block;
+  margin-bottom: 8rpx;
+  color: var(--accent);
+  font-size: 23rpx;
+  font-weight: 700;
+}
+
+.coach-text {
+  color: var(--text);
+  font-size: 26rpx;
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+
 .summary-head,
 .section-head,
 .error-item,
@@ -171,8 +202,36 @@
 
 .error-body {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   gap: 10rpx;
+}
+
+.error-label {
+  color: var(--muted);
+  font-size: 21rpx;
+  font-weight: 700;
+}
+
+.error-from {
+  color: var(--text);
+  text-decoration: none;
+}
+
+.error-from.real-error {
+  color: var(--bad);
+  text-decoration: line-through;
+}
+
+.error-to {
+  color: var(--good);
+  font-weight: 700;
+}
+
+.error-reason {
+  color: var(--muted);
+  font-size: 23rpx;
+  line-height: 1.5;
 }
 
 .error-from {

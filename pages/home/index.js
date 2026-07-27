@@ -2,6 +2,8 @@ const { fetchStudyProfile, fetchAccountEntitlement, fetchBackendHealthStatus, fe
 const { getHistory, saveHistoryItem } = require('../../utils/storage');
 const { isAuthSessionValid, getAuthToken, getOpenId, wechatLogin } = require('../../utils/auth');
 const { buildStudyProfile } = require('../../utils/study-profile');
+const { buildFormalGradeMetrics } = require('../../utils/dashboard-metrics');
+const { normalizeGrowthProfile, buildGrowthHomeView } = require('../../utils/growth-profile');
 
 Page({
   data: {
@@ -24,7 +26,18 @@ Page({
     footerHint: '',
     latestGradeId: '',
     latestGradeSourceType: '',
-    latestGradeReady: false
+    latestGradeReady: false,
+    growthEssayType: 'application',
+    growthMetric: 'score',
+    growthEssayTypeTabs: [],
+    growthMetricTabs: [],
+    dailyTask: null,
+    weekSummary: { headline: '', improved: [], declined: [] },
+    growthTrendPoints: [],
+    growthTrendSegments: [],
+    growthEmptyText: '',
+    growthErrors: [],
+    growthMasteryItems: []
   },
 
   onShow() {
@@ -46,7 +59,7 @@ Page({
 
     const localHistory = getHistory();
     const [profileResult, entitlementResult, healthResult, historyResult] = await Promise.allSettled([
-      fetchStudyProfile(),
+      fetchStudyProfile(this.data.growthEssayType),
       fetchAccountEntitlement(),
       fetchBackendHealthStatus(),
       fetchEssayHistoryPage({
@@ -66,7 +79,12 @@ Page({
 
     const entitlement = entitlementResult.status === 'fulfilled' ? entitlementResult.value : null;
     const health = healthResult.status === 'fulfilled' ? healthResult.value : null;
-    const gradeHistory = mergedHistory.filter((item) => item && item.mode === 'grade' && item.taskStatus !== 'FAILED');
+    const gradeHistory = mergedHistory.filter((item) =>
+      item
+      && item.mode === 'grade'
+      && item.taskStatus !== 'FAILED'
+      && parseScoreText(item.scoreText).valid
+    );
     const latestGrade = gradeHistory[0] || null;
     const dashboard = buildDashboardViewModel({
       profile,
@@ -75,6 +93,13 @@ Page({
       history: mergedHistory,
       gradeHistory
     });
+    const growthProfile = normalizeGrowthProfile(profile.growth || {});
+    const growthView = buildGrowthHomeView(
+      growthProfile,
+      this.data.growthEssayType,
+      this.data.growthMetric
+    );
+    this.growthProfile = growthProfile;
 
     this.setData({
       loading: false,
@@ -90,7 +115,16 @@ Page({
       footerHint: dashboard.footerHint,
       latestGradeId: latestGrade ? latestGrade.id : '',
       latestGradeSourceType: latestGrade ? latestGrade.sourceType || 'local' : '',
-      latestGradeReady: !!(latestGrade && latestGrade.content)
+      latestGradeReady: !!(latestGrade && latestGrade.content),
+      growthEssayTypeTabs: growthView.essayTypeTabs,
+      growthMetricTabs: growthView.metricTabs,
+      dailyTask: growthView.dailyTask,
+      weekSummary: growthView.weekSummary,
+      growthTrendPoints: growthView.trendPoints,
+      growthTrendSegments: growthView.trendSegments,
+      growthEmptyText: growthView.emptyText,
+      growthErrors: growthView.recentErrors,
+      growthMasteryItems: growthView.masteryItems
     });
 
     if (!mergedHistory.length && profileResult.status !== 'fulfilled' && historyResult.status !== 'fulfilled') {
@@ -103,7 +137,10 @@ Page({
   async openLatestGrade() {
     const latestId = this.data.latestGradeId;
     if (!latestId) {
-      this.goReport();
+      wx.showToast({
+        title: '先完成一次正式批改',
+        icon: 'none'
+      });
       return;
     }
 
@@ -129,7 +166,10 @@ Page({
     }
 
     if (!target) {
-      this.goReport();
+      wx.showToast({
+        title: '没有找到这份批改记录',
+        icon: 'none'
+      });
       return;
     }
 
@@ -162,9 +202,55 @@ Page({
   },
 
   goReport() {
-    wx.navigateTo({
-      url: '/pages/report/index'
+    this.openLatestGrade();
+  },
+
+  chooseGrowthEssayType(event) {
+    const essayType = event.currentTarget.dataset.type === 'continuation'
+      ? 'continuation'
+      : 'application';
+    if (essayType === this.data.growthEssayType) {
+      return;
+    }
+    this.setData({ growthEssayType: essayType });
+    this.loadDashboard();
+  },
+
+  chooseGrowthMetric(event) {
+    const metric = event.currentTarget.dataset.metric || 'score';
+    if (!this.growthProfile) {
+      return;
+    }
+    const view = buildGrowthHomeView(this.growthProfile, this.data.growthEssayType, metric);
+    this.setData({
+      growthMetric: view.activeMetric,
+      growthMetricTabs: view.metricTabs,
+      growthTrendPoints: view.trendPoints,
+      growthTrendSegments: view.trendSegments,
+      growthEmptyText: view.emptyText
     });
+  },
+
+  startDailyTask() {
+    const route = this.data.dailyTask && this.data.dailyTask.route;
+    wx.navigateTo({
+      url: route || '/pages/write/index?mode=grade&type=application'
+    });
+  },
+
+  handleMetricTap(event) {
+    const action = event.currentTarget.dataset.action || '';
+    if (action === 'history') {
+      wx.navigateTo({ url: '/pages/history/index' });
+      return;
+    }
+    if (action === 'latest-report') {
+      if (!this.data.latestGradeId) {
+        wx.showToast({ title: '完成一次正式批改后可查看', icon: 'none' });
+        return;
+      }
+      this.openLatestGrade();
+    }
   },
 
   executeAction(actionKind) {
@@ -183,7 +269,7 @@ Page({
         this.openLatestGrade();
         break;
       case 'go_history':
-        this.goReport();
+        wx.navigateTo({ url: '/pages/history/index' });
         break;
       case 'continue_grade':
       default:
@@ -255,15 +341,17 @@ function maskOpenId(openId) {
 }
 
 function buildDashboardViewModel({ profile, entitlement, health, history, gradeHistory }) {
+  const formalMetrics = buildFormalGradeMetrics(gradeHistory);
+  gradeHistory = formalMetrics.formalGrades;
   const daysToGaokao = calculateGaokaoCountdown();
   const latestGrade = gradeHistory[0] || null;
   const latestScore = parseScoreText(latestGrade && latestGrade.scoreText);
   const weekPracticeCount = countRange(history, 7);
   const previousWeekCount = countRange(history, 14) - weekPracticeCount;
-  const averageScore = computeAverageScore(gradeHistory);
-  const grammarAccuracy = computeGrammarAccuracy(gradeHistory, profile);
-  const vocabRichness = computeVocabularyRichness(gradeHistory);
-  const trend = buildTrendSeries(gradeHistory);
+  const averageScore = formalMetrics.average;
+  const grammarAccuracy = formalMetrics.grammar;
+  const vocabRichness = formalMetrics.vocabulary;
+  const trend = buildActualTrendSeries(formalMetrics.trend.values);
 
   return {
     daysToGaokao,
@@ -274,7 +362,7 @@ function buildDashboardViewModel({ profile, entitlement, health, history, gradeH
       value: latestScore.valueText,
       max: latestScore.maxText,
       percentText: latestScore.percentText,
-      deltaText: buildDeltaText(gradeHistory),
+      deltaText: formalMetrics.deltaText,
       caption: latestGrade
         ? `${latestGrade.essayTypeLabel} · ${latestGrade.bandLabel || '最近一次严格批改'}`
         : '先做一次严格批改，首页就会开始记录你的提分走势',
@@ -285,25 +373,29 @@ function buildDashboardViewModel({ profile, entitlement, health, history, gradeH
         label: '本周练习',
         value: String(weekPracticeCount),
         unit: '篇',
-        helper: previousWeekCount > 0 ? `较上周 ${weekPracticeCount - previousWeekCount >= 0 ? '+' : ''}${weekPracticeCount - previousWeekCount}` : '从今天开始积累'
+        helper: previousWeekCount > 0 ? `较上周 ${weekPracticeCount - previousWeekCount >= 0 ? '+' : ''}${weekPracticeCount - previousWeekCount}` : '从今天开始积累',
+        action: 'history'
       },
       {
         label: '平均分',
         value: averageScore.valueText,
         unit: averageScore.unitText,
-        helper: averageScore.helperText
+        helper: averageScore.helperText,
+        action: 'history'
       },
       {
         label: '语法稳定',
-        value: String(grammarAccuracy.value),
-        unit: '%',
-        helper: grammarAccuracy.helperText
+        value: grammarAccuracy.valueText,
+        unit: grammarAccuracy.unitText,
+        helper: grammarAccuracy.helperText,
+        action: 'latest-report'
       },
       {
         label: '词汇丰富',
-        value: String(vocabRichness.value),
-        unit: '',
-        helper: vocabRichness.helperText
+        value: vocabRichness.valueText,
+        unit: vocabRichness.unitText,
+        helper: vocabRichness.helperText,
+        action: 'latest-report'
       }
     ],
     focusCards: buildFocusCards(profile),
@@ -426,150 +518,20 @@ function calculateGaokaoCountdown(now = new Date()) {
   return Math.max(0, Math.ceil(diff / 86400000));
 }
 
-function computeAverageScore(history) {
-  const parsed = history
-    .map((item) => parseScoreText(item.scoreText))
-    .filter((item) => item.valid);
-
-  if (!parsed.length) {
-    return {
-      valueText: '--',
-      unitText: '',
-      helperText: '批改后自动统计'
-    };
-  }
-
-  const averageValue = parsed.reduce((sum, item) => sum + item.value, 0) / parsed.length;
-  const averageMax = parsed.reduce((sum, item) => sum + item.max, 0) / parsed.length;
-
-  return {
-    valueText: formatDecimal(averageValue),
-    unitText: averageMax ? `/${formatDecimal(averageMax)}` : '',
-    helperText: `最近 ${parsed.length} 次严格批改`
-  };
-}
-
-function computeGrammarAccuracy(history, profile) {
-  const parsed = history
-    .map((item) => parseScoreText(item.scoreText))
-    .filter((item) => item.valid);
-  let value = parsed.length
-    ? Math.round((parsed.reduce((sum, item) => sum + item.percent, 0) / parsed.length) * 100)
-    : 84;
-
-  const grammarTag = profile && Array.isArray(profile.tags)
-    ? profile.tags.find((item) => item.code === 'grammar_accuracy')
-    : null;
-
-  if (grammarTag && grammarTag.hitCount > 0) {
-    value -= Math.min(grammarTag.hitCount * 3, 10);
-  }
-
-  value = clamp(value, 55, 99);
-
-  return {
-    value,
-    helperText: grammarTag ? `近期重点：${grammarTag.label}` : '按最近批改走势估算'
-  };
-}
-
-function computeVocabularyRichness(history) {
-  const texts = history
-    .slice(0, 5)
-    .map((item) => (item.analysis && item.analysis.improvedEssay) || item.content || '')
-    .filter(Boolean);
-
-  if (!texts.length) {
-    return {
-      value: 72,
-      helperText: '开始写作后自动评估'
-    };
-  }
-
-  const scores = texts.map((text) => {
-    const words = String(text || '').toLowerCase().match(/[a-z]+/g) || [];
-    if (!words.length) {
-      return 72;
-    }
-    const unique = new Set(words).size;
-    return clamp(Math.round((unique / words.length) * 220), 45, 99);
-  });
-
-  const average = Math.round(scores.reduce((sum, item) => sum + item, 0) / scores.length);
-  return {
-    value: average,
-    helperText: '按最近作文文本估算'
-  };
-}
-
 function countRange(history, days) {
   const boundary = startOfDay(new Date()).getTime() - (days - 1) * 86400000;
   return history.filter((item) => Number(item.createdAt || 0) >= boundary).length;
 }
 
-function buildDeltaText(history) {
-  const parsed = history
-    .map((item) => parseScoreText(item.scoreText))
-    .filter((item) => item.valid)
-    .slice(0, 2);
-
-  if (parsed.length < 2) {
-    return '';
-  }
-
-  const delta = parsed[0].value - parsed[1].value;
-  if (Math.abs(delta) < 0.1) {
-    return '持平';
-  }
-  return `${delta > 0 ? '+' : ''}${formatDecimal(delta)}`;
-}
-
-function buildTrendSeries(history) {
-  const gradeMap = new Map();
-  history.forEach((item) => {
-    const parsed = parseScoreText(item.scoreText);
-    if (!parsed.valid) {
-      return;
-    }
-    const dateKey = formatDateKey(item.createdAt);
-    const current = gradeMap.get(dateKey) || [];
-    current.push(parsed.percent);
-    gradeMap.set(dateKey, current);
-  });
-
-  const days = [];
-  for (let index = 6; index >= 0; index -= 1) {
-    const date = new Date(startOfDay(new Date()).getTime() - index * 86400000);
-    const key = formatDateKey(date.getTime());
-    const bucket = gradeMap.get(key) || [];
-    const avg = bucket.length
-      ? bucket.reduce((sum, item) => sum + item, 0) / bucket.length
-      : null;
-    days.push({
-      key,
-      value: avg
-    });
-  }
-
-  const fallback = history.length
-    ? 0.72
-    : 0.46;
-  let lastValue = fallback;
-  const normalized = days.map((item) => {
-    if (item.value === null) {
-      return lastValue;
-    }
-    lastValue = item.value;
-    return item.value;
-  });
-
+function buildActualTrendSeries(values) {
   const chartWidth = 560;
   const chartOffset = 12;
-  const points = normalized.map((value, index) => {
-    const x = normalized.length === 1
-      ? chartOffset
-      : chartOffset + (index / (normalized.length - 1)) * chartWidth;
-    const y = 18 + (1 - clamp(value, 0, 1)) * 64;
+  const points = values.map((item, index) => {
+    const x = values.length === 1
+      ? chartOffset + chartWidth / 2
+      : chartOffset + (index / (values.length - 1)) * chartWidth;
+    const percent = item.max > 0 ? item.score / item.max : 0;
+    const y = 18 + (1 - clamp(percent, 0, 1)) * 64;
     return {
       x,
       y

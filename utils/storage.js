@@ -1,6 +1,7 @@
 const { config } = require('./config');
 const { modeLabelMap, typeLabelMap, bandLabelMap } = require('./constants');
 const { summarizeText } = require('./format');
+const { normalizeScoreDimensions } = require('./report-view-model');
 
 function getHistory() {
   return (wx.getStorageSync(config.storageKeys.history) || []).map(normalizeSessionRecord);
@@ -140,6 +141,7 @@ function normalizeGradeAnalysis(analysis) {
     overallComment: analysis.overallComment || '',
     secondDraftGuidance: analysis.secondDraftGuidance || '',
     improvedEssay: analysis.improvedEssay || '',
+    scoreDimensions: normalizeScoreDimensions(analysis.scoreDimensions),
     sentenceDiagnostics: Array.isArray(analysis.sentenceDiagnostics)
       ? analysis.sentenceDiagnostics
         .map((item) => ({

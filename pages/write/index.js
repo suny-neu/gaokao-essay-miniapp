@@ -1,17 +1,31 @@
 const { uid } = require('../../utils/format');
 const { submitTaskAndOpenReport, resolveTaskRequestError, shouldReuseClientRequestId } = require('../../utils/task-flow');
 const { extractOcrText } = require('../../utils/request');
+const {
+  normalizeQuestionFields,
+  hasCompleteContinuationQuestion,
+  applyQuestionOcr
+} = require('../../utils/continuation-question');
+
+const REVIEW_PROGRESS_STAGES = [
+  { after: 0, text: '正在检查作文…' },
+  { after: 4000, text: '正在分析内容与结构…' },
+  { after: 10000, text: '正在生成批改建议…' },
+  { after: 17000, text: '即将完成…' }
+];
 
 const ESSAY_TYPE_PRESETS = {
   application: {
     taskTag: '议论文 · 100-120 词',
     promptText: '假定你是李华，英国朋友 Peter 来信询问你校的科技创新活动。请回信介绍一项你参与过的活动。',
+    draftText: "Dear Peter,\nI'm glad to hear from you. Our school holds a science innovation week every year, and I joined a robotics workshop.",
     requirements: ['字数 100-120', '含 3 个要点'],
     targetWordCount: 120
   },
   continuation: {
     taskTag: '读后续写 · 120-150 词',
     promptText: '请根据所给材料和两段段首句，续写短文，使之构成一篇完整的故事。',
+    draftText: '',
     requirements: ['字数 120-150', '分两段续写'],
     targetWordCount: 150
   }
@@ -23,8 +37,13 @@ Page({
     essayType: 'application',
     taskTag: '议论文 · 100-120 词',
     promptText: '假定你是李华，英国朋友 Peter 来信询问你校的科技创新活动。请回信介绍一项你参与过的活动。',
+    sourceMaterial: '',
+    paragraphOneStarter: '',
+    paragraphTwoStarter: '',
+    editingContinuationQuestion: true,
     requirements: ['字数 100-120', '含 3 个要点'],
     draftText: "Dear Peter,\nI'm glad to hear from you. Our school holds a science innovation week every year, and I joined a robotics workshop.",
+    questionOcrLoading: false,
     aiHint: {
       from: 'every year',
       to: 'annually'
@@ -61,8 +80,53 @@ Page({
       essayType,
       taskTag: preset.taskTag,
       promptText: preset.promptText,
+      draftText: preset.draftText,
       requirements: preset.requirements,
       targetWordCount: preset.targetWordCount
+    });
+  },
+
+  handlePromptInput(event) {
+    this.setData({
+      promptText: event.detail.value || ''
+    });
+  },
+
+  handleSourceMaterialInput(event) {
+    this.setData({
+      sourceMaterial: event.detail.value || ''
+    });
+  },
+
+  handleParagraphOneInput(event) {
+    this.setData({
+      paragraphOneStarter: event.detail.value || ''
+    });
+  },
+
+  handleParagraphTwoInput(event) {
+    this.setData({
+      paragraphTwoStarter: event.detail.value || ''
+    });
+  },
+
+  startEditingContinuationQuestion() {
+    this.setData({
+      editingContinuationQuestion: true
+    });
+  },
+
+  finishEditingContinuationQuestion() {
+    if (!hasCompleteContinuationQuestion(this.data)) {
+      wx.showToast({
+        title: '请补全原文和两段首句',
+        icon: 'none'
+      });
+      return;
+    }
+
+    this.setData({
+      editingContinuationQuestion: false
     });
   },
 
@@ -83,7 +147,92 @@ Page({
       url: `/pages/tutor/index?type=${this.data.essayType}`
     });
   },
+  chooseQuestionImageAndOcr() {
+    if (this.data.questionOcrLoading || this.data.ocrLoading || this.data.loading) {
+      return;
+    }
 
+    wx.chooseMedia({
+      count: 1,
+      mediaType: ['image'],
+      sourceType: ['album', 'camera'],
+      sizeType: ['compressed'],
+      camera: 'back',
+      success: (res) => {
+        const file = res.tempFiles && res.tempFiles[0];
+
+        if (file && file.tempFilePath) {
+          this.runQuestionOcr(file.tempFilePath);
+        }
+      },
+      fail: (error) => {
+        const message = String((error && error.errMsg) || '');
+
+        if (!/cancel/i.test(message)) {
+          wx.showToast({
+            title: '选择题目图片失败',
+            icon: 'none'
+          });
+        }
+      }
+    });
+  },
+
+  async runQuestionOcr(filePath) {
+    this.setData({
+      questionOcrLoading: true,
+      submitStatus: '正在识别题目…'
+    });
+
+    try {
+      const result = await extractOcrText({
+        filePath,
+        scene: 'question'
+      });
+
+      const text = String((result && result.text) || '').trim();
+
+      if (!text) {
+        throw new Error('没有识别到题目文字，请换一张清晰图片');
+      }
+
+      if (this.data.essayType === 'continuation') {
+        const question = applyQuestionOcr(this.data, result);
+        this.setData({
+          ...question,
+          editingContinuationQuestion: true,
+          submitStatus: '原文识别完成，请检查并填写两段段首句'
+        });
+      } else {
+        this.setData({
+          promptText: text,
+          submitStatus: '题目识别完成，请检查是否准确'
+        });
+      }
+
+      wx.showToast({
+        title: '题目识别完成',
+        icon: 'success'
+      });
+    } catch (error) {
+      const message = String(
+        (error && error.message) || '题目识别失败'
+      );
+
+      this.setData({
+        submitStatus: `题目识别失败：${message}`
+      });
+
+      wx.showToast({
+        title: message,
+        icon: 'none'
+      });
+    } finally {
+      this.setData({
+        questionOcrLoading: false
+      });
+    }
+  },
   chooseImageAndOcr() {
     if (this.data.ocrLoading || this.data.loading) {
       return;
@@ -134,9 +283,40 @@ Page({
       this.setData({ ocrLoading: false });
     }
   },
+  startReviewProgress() {
+    this.stopReviewProgress();
 
+    const startedAt = Date.now();
+    this.setData({
+      submitStatus: REVIEW_PROGRESS_STAGES[0].text
+    });
+
+    this.reviewProgressTimer = setInterval(() => {
+      const elapsed = Date.now() - startedAt;
+      let currentText = REVIEW_PROGRESS_STAGES[0].text;
+
+      REVIEW_PROGRESS_STAGES.forEach((stage) => {
+        if (elapsed >= stage.after) {
+          currentText = stage.text;
+        }
+      });
+
+      if (currentText !== this.data.submitStatus) {
+        this.setData({
+          submitStatus: currentText
+        });
+      }
+    }, 500);
+  },
+
+  stopReviewProgress() {
+    if (this.reviewProgressTimer) {
+      clearInterval(this.reviewProgressTimer);
+      this.reviewProgressTimer = null;
+    }
+  },
   async submitForReview() {
-    if (this.data.loading || this.data.ocrLoading) {
+    if (this.data.loading || this.data.ocrLoading || this.data.questionOcrLoading) {
       return;
     }
 
@@ -149,32 +329,55 @@ Page({
       return;
     }
 
+    const isContinuation = this.data.essayType === 'continuation';
+    const {
+      sourceMaterial,
+      paragraphOneStarter,
+      paragraphTwoStarter
+    } = normalizeQuestionFields(this.data);
+
+    if (isContinuation && !sourceMaterial) {
+      wx.showToast({
+        title: '请先填写原文材料',
+        icon: 'none'
+      });
+      return;
+    }
+
+    if (isContinuation && (!paragraphOneStarter || !paragraphTwoStarter)) {
+      wx.showToast({
+        title: '请填写两段段首句',
+        icon: 'none'
+      });
+      return;
+    }
+
     const payload = {
       clientRequestId: this.data.submitRequestId || uid('req'),
       mode: 'grade',
       essayType: this.data.essayType,
       band: '',
       bandValue: '',
-      taskContent: String(this.data.promptText || '').trim(),
-      sourceMaterial: '',
+      taskContent: isContinuation
+        ? [
+            `第一段段首句：${paragraphOneStarter}`,
+            `第二段段首句：${paragraphTwoStarter}`
+          ].join('\n')
+        : String(this.data.promptText || '').trim(),
+      sourceMaterial: isContinuation ? sourceMaterial : '',
       draftText,
       requirements: this.data.requirements.join('；')
     };
 
     this.setData({
       loading: true,
-      submitRequestId: payload.clientRequestId,
-      submitStatus: '正在提交批改...'
+      submitRequestId: payload.clientRequestId
     });
 
+    this.startReviewProgress();
+
     try {
-      await submitTaskAndOpenReport(payload, {
-        onStatus: (text) => {
-          this.setData({
-            submitStatus: text || '正在批改...'
-          });
-        }
-      });
+      await submitTaskAndOpenReport(payload);
       this.setData({
         submitRequestId: '',
         submitStatus: '批改完成，正在打开报告...'
@@ -197,10 +400,14 @@ Page({
         icon: 'none'
       });
     } finally {
+      this.stopReviewProgress();
       this.setData({
         loading: false
       });
     }
+  },
+  onUnload() {
+    this.stopReviewProgress();
   },
 
   refreshWordCount(text) {

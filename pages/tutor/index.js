@@ -1,26 +1,55 @@
+const TUTOR_CONFIG = {
+  topic: {
+    label: '观点与素材',
+    placeholder: '输入作文话题或你的一句观点…',
+    inputGuide: '作文话题、中文想法或一句英文观点',
+    outputGuide: '理由、具体例子和可直接使用的英文表达',
+    quickActions: ['换话题', '给示例', '帮我展开'],
+    welcome: '输入一个作文话题或一句观点，我帮你补充理由、例子和地道表达。'
+  },
+  grammar: {
+    label: '句子纠错',
+    placeholder: '粘贴需要检查的英文句子…',
+    inputGuide: '一到三句需要检查的英文',
+    outputGuide: '错误判断、修改版本和原因解释',
+    quickActions: ['检查这句', '解释原因', '表达升级'],
+    welcome: '粘贴一句英文，我会区分真正的语法错误和普通的表达升级。'
+  },
+  mock: {
+    label: '草稿诊断',
+    placeholder: '粘贴作文题目和当前草稿…',
+    inputGuide: '作文题目＋当前英文草稿',
+    outputGuide: '内容、结构、语言诊断和最优先修改项',
+    quickActions: ['给思路', '诊断草稿', '下一步怎么写'],
+    welcome: '粘贴作文题目和当前草稿，我帮你判断内容是否完整，以及下一步怎么修改。'
+  }
+};
 const { uid } = require('../../utils/format');
 const { submitTaskAndOpenReport, resolveTaskRequestError, shouldReuseClientRequestId } = require('../../utils/task-flow');
 
 Page({
   data: {
     tabs: [
-      { id: 'topic', label: '话题练习' },
-      { id: 'grammar', label: '语法专练' },
-      { id: 'mock', label: '模拟写作' }
+      { id: 'topic', label: '观点与素材' },
+      { id: 'grammar', label: '句子纠错' },
+      { id: 'mock', label: '草稿诊断' }
     ],
     activeTab: 'topic',
     essayType: 'application',
-    quickActions: ['换话题', '给提示', '批改这句'],
+    quickActions: TUTOR_CONFIG.topic.quickActions,
+    inputPlaceholder: TUTOR_CONFIG.topic.placeholder,
+    inputGuide: TUTOR_CONFIG.topic.inputGuide,
+    outputGuide: TUTOR_CONFIG.topic.outputGuide,
     inputText: '',
     inputGhost: false,
     loading: false,
     submitRequestId: '',
     messages: [
-      { id: 'm1', role: 'ai', text: '来练「科技与生活」。先写一句你的观点，我帮你润色。' },
-      { id: 'm2', role: 'me', text: 'Technology makes our life more convenient.' },
-      { id: 'm3', role: 'ai', text: '方向不错！哪方面 convenient？加个具体例子更有说服力。' },
-      { id: 'm4', role: 'me', text: '...like online learning during the pandemic.' },
-      { id: 'm5', role: 'ai', text: '很好，可升级为： “Online learning, for instance, has made education far more accessible.”' }
+      {
+        id: 'welcome-topic',
+        role: 'ai',
+        text: TUTOR_CONFIG.topic.welcome
+      }
     ]
   },
 
@@ -32,7 +61,24 @@ Page({
 
   chooseTab(event) {
     const activeTab = event.currentTarget.dataset.tab || 'topic';
-    this.setData({ activeTab });
+    const config = TUTOR_CONFIG[activeTab] || TUTOR_CONFIG.topic;
+
+    this.setData({
+      activeTab,
+      quickActions: config.quickActions,
+      inputPlaceholder: config.placeholder,
+      inputGuide: config.inputGuide,
+      outputGuide: config.outputGuide,
+      inputText: '',
+      inputGhost: false,
+      messages: [
+        {
+          id: `welcome-${activeTab}-${Date.now()}`,
+          role: 'ai',
+          text: config.welcome
+        }
+      ]
+    });
   },
 
   chooseEssayType(event) {
@@ -49,9 +95,17 @@ Page({
       return;
     }
     const templates = {
-      '换话题': '换个话题练习，例如：环保、人工智能',
-      '给提示': '给我一个写作提示或例句',
-      '批改这句': '请批改这句英文：'
+      '换话题': '请给我一个高考英语作文常见话题。',
+      '给示例': '请围绕这个观点给我一个具体例子：',
+      '帮我展开': '请帮我把这个观点展开成“观点＋理由＋例子”：',
+
+      '检查这句': '请检查这句话是否有真正的语法错误：',
+      '解释原因': '请解释这句话为什么需要修改：',
+      '表达升级': '这句话如果语法正确，请帮我做表达升级：',
+
+      '给思路': '请根据下面的作文题目给我写作思路：',
+      '诊断草稿': '请诊断下面这篇草稿的问题：',
+      '下一步怎么写': '请告诉我这篇草稿下一步最应该补充什么：'
     };
     this.setData({
       inputText: templates[label] || label,
@@ -135,10 +189,10 @@ function buildTutorPayload(activeTab, essayType, text, clientRequestId) {
       coachMode: 'sentence_upgrade',
       band: 'band2',
       bandValue: '学霸版',
-      taskContent: '请按高考英语作文标准，帮我升级下面这句话。',
+      taskContent: '请按高考英语作文标准检查并升级下面的句子。',
       sourceMaterial: '',
       draftText: text,
-      requirements: '重点关注语法准确性和表达自然度。'
+      requirements: '先判断是否存在真正的语法错误；如果语法正确，只能标为表达升级，并解释修改原因。'
     };
   }
 
@@ -151,10 +205,10 @@ function buildTutorPayload(activeTab, essayType, text, clientRequestId) {
       coachMode: 'routing',
       band: 'band2',
       bandValue: '学霸版',
-      taskContent: '请按高考英语作文模拟写作标准给出下一步建议。',
+      taskContent: '用户将作文题目和当前草稿粘贴在输入内容中，请进行草稿诊断。',
+      requirements: '先区分题目和草稿，再检查要点、内容、结构和语言，最后告诉用户下一步最值得修改什么。',
       sourceMaterial: '',
-      draftText: text,
-      requirements: '判断我该继续写还是转批改。'
+      draftText: text
     };
   }
 
@@ -166,9 +220,9 @@ function buildTutorPayload(activeTab, essayType, text, clientRequestId) {
     coachMode: 'outline',
     band: 'band2',
     bandValue: '学霸版',
-    taskContent: `话题练习：科技与生活。用户当前表达：${text}`,
+    taskContent: `用户希望练习下面的话题或观点：${text}`,
     sourceMaterial: '',
     draftText: '',
-    requirements: '请先鼓励，再给一句更地道的高考英语表达。'
+    requirements: '请先判断观点是否清楚，再给出理由、具体例子和一句可直接使用的英文表达。'
   };
 }

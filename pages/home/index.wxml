@@ -22,40 +22,70 @@
         <text wx:else class="auth-bar-enter">管理 ›</text>
       </view>
 
-      <panel-card extraClass="hero-card">
-        <text class="micro-heading">最近批改得分</text>
-        <view class="hero-row">
-          <view class="hero-score">
-            <text class="hero-big num">{{scoreSummary.value}}</text>
-            <text class="hero-of">/{{scoreSummary.max}}</text>
+      <text class="section-title section-title-first">今日提升任务</text>
+      <panel-card extraClass="daily-task-card">
+        <view class="daily-task-top">
+          <view class="daily-task-copy">
+            <text class="daily-task-title">{{dailyTask.title}}</text>
+            <text class="daily-task-reason">{{dailyTask.reason}}</text>
           </view>
-          <view class="hero-meta">
-            <text wx:if="{{scoreSummary.deltaText}}" class="hero-delta">{{scoreSummary.deltaText}}</text>
-            <text class="hero-topic">{{scoreSummary.caption}}</text>
-          </view>
+          <text class="daily-task-time">约 {{dailyTask.minutes}} 分钟</text>
         </view>
-        <view class="hero-bar" aria-role="progressbar" aria-valuenow="{{scoreSummary.percentText}}">
-          <view class="hero-bar-fill"></view>
+        <button class="daily-task-button" bindtap="startDailyTask">开始今日任务</button>
+      </panel-card>
+
+      <text class="section-title">本周进步</text>
+      <panel-card extraClass="week-card">
+        <text class="week-headline">{{weekSummary.headline || '完成两次同类型正式批改后，就能看到本周变化'}}</text>
+        <view wx:if="{{weekSummary.improved.length}}" class="change-row">
+          <text class="change-label change-good">进步</text>
+          <text class="change-text">{{weekSummary.improvedText}}</text>
+        </view>
+        <view wx:if="{{weekSummary.declined.length}}" class="change-row">
+          <text class="change-label change-watch">留意</text>
+          <text class="change-text">{{weekSummary.declinedText}}</text>
         </view>
       </panel-card>
 
-      <view class="metrics-grid">
-        <metric-card wx:for="{{statCards}}" wx:key="label" label="{{item.label}}" value="{{item.value}}" unit="{{item.unit}}" helper="{{item.helper}}"></metric-card>
+      <text class="section-title">能力趋势</text>
+      <view class="tab-row">
+        <view wx:for="{{growthEssayTypeTabs}}" wx:key="code"
+          class="tab-chip {{growthEssayType === item.code ? 'tab-chip-active' : ''}}"
+          data-type="{{item.code}}" bindtap="chooseGrowthEssayType">{{item.label}}</view>
       </view>
-
-      <text class="section-title">需要关注</text>
-      <view class="alert-list">
-        <alert-item wx:for="{{focusCards}}" wx:key="id" badge="{{item.badge}}" title="{{item.title}}" subtitle="{{item.subtitle}}" tone="{{item.tone}}" data-action="{{item.action}}" bindtap="handleFocusAction"></alert-item>
-      </view>
-
-      <text class="section-title">7 天得分趋势</text>
       <panel-card extraClass="trend-card">
-        <view class="sparkline">
-          <view class="sparkline-area"></view>
-          <view wx:for="{{trendSegments}}" wx:key="index" class="sparkline-segment" style="{{item.style}}"></view>
-          <view wx:for="{{trendPoints}}" wx:key="index" class="sparkline-point" style="{{item.style}}"></view>
+        <view class="metric-tabs">
+          <view wx:for="{{growthMetricTabs}}" wx:key="code"
+            class="metric-chip {{growthMetric === item.code ? 'metric-chip-active' : ''}}"
+            data-metric="{{item.code}}" bindtap="chooseGrowthMetric">{{item.label}}</view>
         </view>
+        <view wx:if="{{growthTrendPoints.length}}" class="sparkline">
+          <view class="sparkline-area"></view>
+          <view wx:for="{{growthTrendSegments}}" wx:key="index" class="sparkline-segment" style="{{item.style}}"></view>
+          <view wx:for="{{growthTrendPoints}}" wx:key="index" class="sparkline-point" style="{{item.style}}"></view>
+        </view>
+        <view wx:else class="trend-empty">{{growthEmptyText}}</view>
       </panel-card>
+
+      <text class="section-title">重复出现</text>
+      <view wx:if="{{growthErrors.length}}" class="growth-list">
+        <view wx:for="{{growthErrors}}" wx:key="code" class="growth-item">
+          <view>
+            <text class="growth-item-title">{{item.label}}</text>
+            <text class="growth-item-evidence">{{item.evidence || '建议放进今天的专项练习'}}</text>
+          </view>
+          <text class="status-pill {{item.status === 'REPEATED' ? 'status-repeat' : ''}}">
+            {{item.status === 'REPEATED' ? '重复出现' : '新发现'}}
+          </text>
+        </view>
+      </view>
+      <view wx:else class="empty-strip">暂未发现重复弱项，继续保持。</view>
+
+      <text class="section-title">已掌握</text>
+      <view wx:if="{{growthMasteryItems.length}}" class="mastery-wrap">
+        <text wx:for="{{growthMasteryItems}}" wx:key="code" class="mastery-chip">✓ {{item.label}}</text>
+      </view>
+      <view wx:else class="empty-strip">连续几篇不再出现的错误，会自动收进这里。</view>
 
       <view class="action-row">
         <button class="btn btn-primary" bindtap="goWrite">写作文</button>
