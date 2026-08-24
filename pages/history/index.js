@@ -157,6 +157,10 @@ Page({
     this.loadHistory(true);
   },
 
+  goWrite() {
+    wx.navigateTo({ url: '/pages/write/index' });
+  },
+
   loadMore() {
     if (!this.data.hasMore || this.data.loadingMore || this.data.loading) {
       return;

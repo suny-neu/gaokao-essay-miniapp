@@ -1,5 +1,9 @@
 <view class="tutor-page">
   <view class="tutor-shell">
+    <view class="page-intro">
+      <text class="section-heading">AI 陪你把一句话写清楚</text>
+      <text class="page-purpose">选一种陪练方式，输入你的题目、句子或草稿，就能得到下一步建议。</text>
+    </view>
     <view class="chip-row type-row">
       <view class="chip {{essayType === 'application' ? 'chip-on' : ''}}" data-type="application" bindtap="chooseEssayType">应用文</view>
       <view class="chip {{essayType === 'continuation' ? 'chip-on' : ''}}" data-type="continuation" bindtap="chooseEssayType">读后续写</view>
@@ -20,6 +24,19 @@
       </view>
     </view>
 
+    <view wx:if="{{activeTab === 'grammar'}}" class="chip-row tutor-mode-row">
+      <view
+        wx:for="{{grammarModes}}"
+        wx:key="id"
+        class="chip tutor-mode-choice {{grammarMode === item.id ? 'chip-on' : ''}}"
+        data-mode="{{item.id}}"
+        bindtap="chooseGrammarMode"
+      >
+        <text>{{item.label}}</text>
+        <text class="tutor-mode-description">{{item.description}}</text>
+      </view>
+    </view>
+
     <view class="chat-stack">
       <view wx:for="{{messages}}" wx:key="id" class="chat-row {{item.role === 'me' ? 'chat-row-me' : 'chat-row-ai'}}">
         <view class="bubble {{item.role === 'me' ? 'bubble-me' : 'bubble-ai'}}">
@@ -32,7 +49,7 @@
       <view wx:for="{{quickActions}}" wx:key="*this" class="chip" data-label="{{item}}" bindtap="chooseQuickAction">{{item}}</view>
     </view>
 
-    <view class="inputbar">
+    <view class="inputbar initial-action">
       <textarea
         class="chat-input {{inputGhost ? 'ghost' : ''}}"
         value="{{inputText}}"
@@ -43,7 +60,7 @@
         maxlength="-1"
         show-confirm-bar="{{false}}"
       ></textarea>
-      <button class="send-btn" loading="{{loading}}" disabled="{{loading}}" bindtap="submitInput">➤</button>
+      <button class="send-btn primary-btn" loading="{{loading}}" disabled="{{loading}}" bindtap="submitInput">发送</button>
     </view>
   </view>
 </view>

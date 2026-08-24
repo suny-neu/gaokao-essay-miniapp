@@ -1,19 +1,15 @@
 const { fetchStudyProfile, fetchAccountEntitlement, fetchBackendHealthStatus, fetchEssayHistoryPage, fetchEssayHistoryDetail } = require('../../utils/request');
 const { getHistory, saveHistoryItem } = require('../../utils/storage');
-const { isAuthSessionValid, getAuthToken, getOpenId, wechatLogin } = require('../../utils/auth');
 const { buildStudyProfile } = require('../../utils/study-profile');
 const { buildFormalGradeMetrics } = require('../../utils/dashboard-metrics');
-const { normalizeGrowthProfile, buildGrowthHomeView } = require('../../utils/growth-profile');
+const { normalizeGrowthProfile, buildGrowthHomeView, buildDashboardHighlights } = require('../../utils/growth-profile');
+const { offerAdRewardDialog, isAdRewardAvailable } = require('../../utils/ad-reward');
 
 Page({
   data: {
     loading: true,
     loadError: '',
-    authState: {
-      loggedIn: false,
-      openIdMask: '',
-      logging: false
-    },
+    homeTopInset: 56,
     daysToGaokao: 0,
     greetingText: '',
     countdownLabel: '',
@@ -37,11 +33,21 @@ Page({
     growthTrendSegments: [],
     growthEmptyText: '',
     growthErrors: [],
-    growthMasteryItems: []
+    growthMasteryItems: [],
+    weeklyMetric: { value: '等待积累', helper: '完成更多批改后生成', tone: 'neutral' },
+    streakMetric: { value: '0', unit: '天', helper: '开始第一次练习', tone: 'neutral' },
+    capabilityMetrics: [],
+    priorityItems: [],
+    dailyQuotaText: '正在获取今日额度',
+    dailyActionText: '额度获取中',
+    dailyQuotaEmpty: false,
+    dailyQuotaActionEnabled: false,
+    dailyQuotaActionKind: 'none',
+    entitlement: null
   },
 
   onShow() {
-    this.refreshAuthState();
+    this.setData({ homeTopInset: resolveHomeTopInset() });
     this.loadDashboard();
   },
 
@@ -54,7 +60,9 @@ Page({
   async loadDashboard() {
     this.setData({
       loading: true,
-      loadError: ''
+      loadError: '',
+      entitlement: null,
+      ...buildDailyQuotaView(null, 'pending')
     });
 
     const localHistory = getHistory();
@@ -76,8 +84,8 @@ Page({
     const profile = profileResult.status === 'fulfilled'
       ? profileResult.value
       : buildStudyProfile(mergedHistory);
-
     const entitlement = entitlementResult.status === 'fulfilled' ? entitlementResult.value : null;
+
     const health = healthResult.status === 'fulfilled' ? healthResult.value : null;
     const gradeHistory = mergedHistory.filter((item) =>
       item
@@ -86,6 +94,8 @@ Page({
       && parseScoreText(item.scoreText).valid
     );
     const latestGrade = gradeHistory[0] || null;
+    const weekly = buildLegacyWeeklyMetric(gradeHistory, this.data.growthEssayType);
+    const streak = buildLegacyStreakMetric(mergedHistory);
     const dashboard = buildDashboardViewModel({
       profile,
       entitlement,
@@ -100,6 +110,12 @@ Page({
       this.data.growthMetric
     );
     this.growthProfile = growthProfile;
+    const highlights = buildDashboardHighlights(
+      growthProfile,
+      this.data.growthEssayType,
+      weekly,
+      streak
+    );
 
     this.setData({
       loading: false,
@@ -124,7 +140,13 @@ Page({
       growthTrendSegments: growthView.trendSegments,
       growthEmptyText: growthView.emptyText,
       growthErrors: growthView.recentErrors,
-      growthMasteryItems: growthView.masteryItems
+      growthMasteryItems: growthView.masteryItems,
+      weeklyMetric: highlights.weeklyMetric,
+      streakMetric: highlights.streakMetric,
+      capabilityMetrics: highlights.capabilityMetrics,
+      priorityItems: highlights.priorityItems,
+      entitlement,
+      ...buildDailyQuotaView(entitlement, entitlementResult.status, isAdRewardAvailable(entitlement))
     });
 
     if (!mergedHistory.length && profileResult.status !== 'fulfilled' && historyResult.status !== 'fulfilled') {
@@ -135,19 +157,58 @@ Page({
   },
 
   async openLatestGrade() {
-    const latestId = this.data.latestGradeId;
-    if (!latestId) {
-      wx.showToast({
-        title: '先完成一次正式批改',
-        icon: 'none'
-      });
-      return;
-    }
-
+    let latestId = this.data.latestGradeId;
+    let latestSourceType = this.data.latestGradeSourceType;
     const localHistory = getHistory();
     let target = localHistory.find((item) => item.id === latestId) || null;
 
-    if ((!target || !target.content) && this.data.latestGradeSourceType === 'remote') {
+    if (!latestId) {
+      wx.showLoading({
+        title: '正在查找报告'
+      });
+      try {
+        const page = await fetchEssayHistoryPage({
+          offset: 0,
+          limit: 1,
+          filters: {
+            mode: 'grade',
+            taskStatus: 'SUCCESS'
+          }
+        });
+        const latestGrade = buildFormalGradeMetrics(
+          mergeHistoryRecords(page.items || [], localHistory)
+        ).formalGrades[0] || null;
+
+        if (latestGrade) {
+          latestId = latestGrade.id;
+          latestSourceType = latestGrade.sourceType || 'local';
+          target = latestGrade;
+          this.setData({
+            latestGradeId: latestId,
+            latestGradeSourceType: latestSourceType,
+            latestGradeReady: !!latestGrade.content
+          });
+        }
+      } catch (error) {
+        wx.showToast({
+          title: '报告加载失败，请稍后重试',
+          icon: 'none'
+        });
+        return;
+      } finally {
+        wx.hideLoading();
+      }
+
+      if (!latestId) {
+        wx.showToast({
+          title: '先完成一次正式批改',
+          icon: 'none'
+        });
+        return;
+      }
+    }
+
+    if ((!target || !target.content) && latestSourceType === 'remote') {
       wx.showLoading({
         title: '正在打开报告'
       });
@@ -205,6 +266,10 @@ Page({
     this.openLatestGrade();
   },
 
+  goHistory() {
+    wx.navigateTo({ url: '/pages/history/index' });
+  },
+
   chooseGrowthEssayType(event) {
     const essayType = event.currentTarget.dataset.type === 'continuation'
       ? 'continuation'
@@ -238,6 +303,33 @@ Page({
     });
   },
 
+  handleDailyPrimaryAction() {
+    if (!this.data.dailyQuotaActionEnabled) {
+      return;
+    }
+
+    if (this.data.dailyQuotaActionKind === 'start_task') {
+      this.startDailyTask();
+      return;
+    }
+
+    if (this.data.dailyQuotaActionKind === 'membership') {
+      wx.navigateTo({ url: '/pages/login/index' });
+      return;
+    }
+
+    if (this.data.dailyQuotaActionKind !== 'watch_ad') {
+      return;
+    }
+
+    offerAdRewardDialog()
+      .then(() => {
+        wx.showToast({ title: '已获得批改次数', icon: 'success' });
+        this.loadDashboard();
+      })
+      .catch(() => {});
+  },
+
   handleMetricTap(event) {
     const action = event.currentTarget.dataset.action || '';
     if (action === 'history') {
@@ -245,10 +337,6 @@ Page({
       return;
     }
     if (action === 'latest-report') {
-      if (!this.data.latestGradeId) {
-        wx.showToast({ title: '完成一次正式批改后可查看', icon: 'none' });
-        return;
-      }
       this.openLatestGrade();
     }
   },
@@ -293,51 +381,19 @@ Page({
     };
   },
 
-  refreshAuthState() {
-    const token = getAuthToken();
-    const openId = getOpenId();
-    const loggedIn = !!(token && openId && isAuthSessionValid());
-    this.setData({
-      authState: {
-        loggedIn,
-        logging: false,
-        openIdMask: loggedIn ? maskOpenId(openId) : ''
-      }
-    });
-  },
-
-  async handleHomeLogin() {
-    if (this.data.authState.logging) {
-      return;
-    }
-    this.setData({ 'authState.logging': true });
-    wx.showLoading({ title: '登录中' });
-    try {
-      await wechatLogin();
-      wx.hideLoading();
-      wx.showToast({ title: '登录成功', icon: 'success' });
-      this.refreshAuthState();
-    } catch (error) {
-      wx.hideLoading();
-      wx.showToast({ title: (error && error.message) || '登录失败', icon: 'none' });
-      this.setData({ 'authState.logging': false });
-    }
-  },
-
   goAuth() {
-    if (this.data.authState.loggedIn) {
-      wx.navigateTo({ url: '/pages/login/index' });
-    } else {
-      this.handleHomeLogin();
-    }
+    wx.navigateTo({ url: '/pages/login/index' });
   }
 });
 
-function maskOpenId(openId) {
-  if (!openId || openId.length <= 10) {
-    return openId;
-  }
-  return `${openId.slice(0, 6)}…${openId.slice(-4)}`;
+function resolveHomeTopInset() {
+  const windowInfo = typeof wx.getWindowInfo === 'function' ? wx.getWindowInfo() : {};
+  const menuButton = typeof wx.getMenuButtonBoundingClientRect === 'function'
+    ? wx.getMenuButtonBoundingClientRect()
+    : {};
+  const statusBarBottom = Math.max(Number(windowInfo.statusBarHeight) || 0, 0) + 44;
+  const menuBottom = Math.max(Number(menuButton.bottom) || 0, 0);
+  return Math.ceil(Math.max(statusBarBottom, menuBottom) + 8);
 }
 
 function buildDashboardViewModel({ profile, entitlement, health, history, gradeHistory }) {
@@ -402,6 +458,168 @@ function buildDashboardViewModel({ profile, entitlement, health, history, gradeH
     trendPoints: trend.points,
     trendSegments: trend.segments,
     footerHint: buildFooterHint(entitlement, health)
+  };
+}
+
+function buildDailyQuotaView(entitlement, entitlementStatus = 'fulfilled', adAvailable = false) {
+  if (entitlementStatus === 'pending') {
+    return {
+      dailyQuotaText: '正在获取今日额度',
+      dailyActionText: '额度获取中',
+      dailyQuotaEmpty: false,
+      dailyQuotaActionEnabled: false,
+      dailyQuotaActionKind: 'none'
+    };
+  }
+
+  if (entitlementStatus !== 'fulfilled' || !entitlement) {
+    return {
+      dailyQuotaText: '暂时无法获取额度',
+      dailyActionText: '暂不可开始',
+      dailyQuotaEmpty: false,
+      dailyQuotaActionEnabled: false,
+      dailyQuotaActionKind: 'none'
+    };
+  }
+
+  if (entitlement.subscriptionActive) {
+    return {
+      dailyQuotaText: '会员不限次批改',
+      dailyActionText: '开始10分钟练习',
+      dailyQuotaEmpty: false,
+      dailyQuotaActionEnabled: true,
+      dailyQuotaActionKind: 'start_task'
+    };
+  }
+
+  const dailyLimit = Number(entitlement.dailyFreeLimit);
+  const dailyRemaining = Number(entitlement.dailyFreeRemaining);
+  if (entitlement.trialPolicy === 'daily' && Number.isFinite(dailyLimit) && dailyLimit > 0 && Number.isFinite(dailyRemaining)) {
+    const remaining = Math.min(Math.max(dailyRemaining, 0), dailyLimit);
+    return buildFreeQuotaView({
+      quotaText: remaining > 0 ? `今日免费批改 ${remaining}/${dailyLimit} 次` : '今日免费批改已用完',
+      remaining,
+      actionText: '开始10分钟练习',
+      adRewardCredits: entitlement.adRewardCredits,
+      adAvailable
+    });
+  }
+
+  if (entitlement.trialPolicy === 'total') {
+    const totalLimit = Number(entitlement.trialTotalLimit || entitlement.trialLimit);
+    const totalRemaining = Number(entitlement.trialRemaining);
+    if (Number.isFinite(totalLimit) && totalLimit > 0 && Number.isFinite(totalRemaining)) {
+      const remaining = Math.min(Math.max(totalRemaining, 0), totalLimit);
+      return buildFreeQuotaView({
+        quotaText: remaining > 0 ? `免费体验还剩 ${remaining}/${totalLimit} 次` : '免费体验次数已用完',
+        remaining,
+        actionText: '开始体验练习',
+        adRewardCredits: entitlement.adRewardCredits,
+        adAvailable
+      });
+    }
+  }
+
+  return {
+    dailyQuotaText: '额度信息暂时无法确认',
+    dailyActionText: '暂不可开始',
+    dailyQuotaEmpty: false,
+    dailyQuotaActionEnabled: false,
+    dailyQuotaActionKind: 'none'
+  };
+}
+
+function buildLegacyWeeklyMetric(gradeHistory = [], essayType = 'application', now = new Date()) {
+  const normalizedType = essayType === 'continuation' ? 'continuation' : 'application';
+  const metrics = buildFormalGradeMetrics(gradeHistory);
+  const thisWeekStart = startOfWeek(now).getTime();
+  const nextWeekStart = thisWeekStart + 7 * 86400000;
+  const previousWeekStart = thisWeekStart - 7 * 86400000;
+  const scores = metrics.formalGrades
+    .filter((item) => (item.essayType === 'continuation' ? 'continuation' : 'application') === normalizedType)
+    .map((item) => ({
+      createdAt: Number(item.createdAt || 0),
+      score: parseScoreText(item.scoreText).value
+    }));
+  const currentScores = scores
+    .filter((item) => item.createdAt >= thisWeekStart && item.createdAt < nextWeekStart)
+    .map((item) => item.score);
+  const previousScores = scores
+    .filter((item) => item.createdAt >= previousWeekStart && item.createdAt < thisWeekStart)
+    .map((item) => item.score);
+
+  if (!currentScores.length || !previousScores.length) {
+    return { delta: 0, label: '等待更多记录', status: 'PENDING' };
+  }
+  const currentAverage = currentScores.reduce((sum, score) => sum + score, 0) / currentScores.length;
+  const previousAverage = previousScores.reduce((sum, score) => sum + score, 0) / previousScores.length;
+  const delta = Math.round((currentAverage - previousAverage) * 10) / 10;
+  return {
+    delta,
+    label: Math.abs(delta) < 0.01 ? '持平' : `${delta > 0 ? '+' : ''}${formatDecimal(delta)}分`,
+    status: delta > 0 ? 'IMPROVED' : delta < 0 ? 'DECLINED' : 'STABLE'
+  };
+}
+
+function buildLegacyStreakMetric(history = [], now = new Date()) {
+  const dates = new Set(
+    history
+      .filter((item) => item && item.taskStatus !== 'FAILED' && ['grade', 'coach'].includes(item.mode))
+      .map((item) => formatDateKey(item.createdAt))
+  );
+  const today = startOfDay(now);
+  let cursor = dates.has(formatDateKey(today.getTime()))
+    ? today
+    : new Date(today.getTime() - 86400000);
+  let days = 0;
+  while (dates.has(formatDateKey(cursor.getTime()))) {
+    days += 1;
+    cursor = new Date(cursor.getTime() - 86400000);
+  }
+  return {
+    days,
+    label: days > 0 ? `已连续学习 ${days} 天` : '开始第一次练习'
+  };
+}
+
+function buildFreeQuotaView({ quotaText, remaining, actionText, adRewardCredits, adAvailable }) {
+  const credits = Math.max(Number(adRewardCredits) || 0, 0);
+  if (remaining > 0) {
+    return {
+      dailyQuotaText: quotaText,
+      dailyActionText: actionText,
+      dailyQuotaEmpty: false,
+      dailyQuotaActionEnabled: true,
+      dailyQuotaActionKind: 'start_task'
+    };
+  }
+
+  if (credits > 0) {
+    return {
+      dailyQuotaText: `${quotaText}，广告奖励还剩 ${credits} 次`,
+      dailyActionText: '开始10分钟练习',
+      dailyQuotaEmpty: true,
+      dailyQuotaActionEnabled: true,
+      dailyQuotaActionKind: 'start_task'
+    };
+  }
+
+  if (adAvailable) {
+    return {
+      dailyQuotaText: quotaText,
+      dailyActionText: '看视频继续批改',
+      dailyQuotaEmpty: true,
+      dailyQuotaActionEnabled: true,
+      dailyQuotaActionKind: 'watch_ad'
+    };
+  }
+
+  return {
+    dailyQuotaText: quotaText,
+    dailyActionText: '查看会员权益',
+    dailyQuotaEmpty: true,
+    dailyQuotaActionEnabled: true,
+    dailyQuotaActionKind: 'membership'
   };
 }
 
@@ -557,7 +775,7 @@ function buildActualTrendSeries(values) {
 
 function parseScoreText(scoreText) {
   const text = String(scoreText || '').trim();
-  const match = text.match(/(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)/);
+  const match = text.match(/(\d+(?:\.\d+)?)\s*(?:分)?\s*\/\s*(\d+(?:\.\d+)?)/);
   if (!match) {
     return {
       valid: false,
@@ -611,6 +829,13 @@ function formatDateKey(timestamp) {
 function startOfDay(value) {
   const date = new Date(value);
   date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+function startOfWeek(value) {
+  const date = startOfDay(value);
+  const daysSinceMonday = (date.getDay() + 6) % 7;
+  date.setDate(date.getDate() - daysSinceMonday);
   return date;
 }
 

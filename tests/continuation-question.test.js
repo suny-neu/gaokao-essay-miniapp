@@ -38,6 +38,39 @@ test('空 OCR 结果不会覆盖已有题目', () => {
   assert.deepEqual(applyQuestionOcr(current, { text: '' }), current);
 });
 
+test('题目 OCR 自动拆分原文和两段首句', () => {
+  const result = applyQuestionOcr({}, {
+    text: [
+      'A boy found a lost dog and took it home.',
+      'His parents helped him look for its owner.',
+      'Paragraph 1: The next morning, the boy saw a notice.',
+      'Paragraph 2:',
+      'The owner thanked the boy warmly.'
+    ].join('\n')
+  });
+
+  assert.deepEqual(result, {
+    sourceMaterial: 'A boy found a lost dog and took it home.\nHis parents helped him look for its owner.',
+    paragraphOneStarter: 'The next morning, the boy saw a notice.',
+    paragraphTwoStarter: 'The owner thanked the boy warmly.'
+  });
+});
+
+test('结构化 OCR 字段优先填入对应题目区域', () => {
+  const result = applyQuestionOcr({}, {
+    text: 'unstructured fallback',
+    sourceMaterial: 'Story source',
+    paragraphOneStarter: 'First starter',
+    paragraphTwoStarter: 'Second starter'
+  });
+
+  assert.deepEqual(result, {
+    sourceMaterial: 'Story source',
+    paragraphOneStarter: 'First starter',
+    paragraphTwoStarter: 'Second starter'
+  });
+});
+
 test('续写页只展示一个题目卡和一个作答区', () => {
   const wxml = fs.readFileSync('pages/write/index.wxml', 'utf8');
 

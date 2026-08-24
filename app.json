@@ -12,9 +12,9 @@
   ],
   "window": {
     "navigationBarTitleText": "高考英语作文助手",
-    "navigationBarBackgroundColor": "#f4f6fb",
+    "navigationBarBackgroundColor": "#f5f5f2",
     "navigationBarTextStyle": "black",
-    "backgroundColor": "#f4f6fb",
+    "backgroundColor": "#f5f5f2",
     "backgroundTextStyle": "light"
   },
   "lazyCodeLoading": "requiredComponents",

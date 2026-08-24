@@ -1,4 +1,8 @@
 <view class="report-page">
+  <view class="report-intro">
+    <text class="section-heading">这次练习的反馈</text>
+    <text class="page-purpose">先看最该改的一点，再按分类修改，下一次会更有方向。</text>
+  </view>
   <view class="report-shell" wx:if="{{ready}}">
     <panel-card wx:if="{{scoreVisible}}" extraClass="summary-card">
       <view class="summary-head">
@@ -31,45 +35,145 @@
     </view>
 
     <view wx:if="{{mode === 'grade'}}" class="section-head">
-      <text class="section-name">逐句修改建议</text>
-      <text class="section-count">{{errors.length}}</text>
+      <text class="section-name">最应该先改什么</text>
+    </view>
+    <panel-card wx:if="{{mode === 'grade'}}" extraClass="list-card priority-card">
+      <text wx:if="{{priority}}" class="priority-text">{{priority}}</text>
+      <text wx:else class="empty-section">本次报告没有单独标出优先修改项。</text>
+    </panel-card>
+
+    <view wx:if="{{mode === 'grade' && contentAdvice}}" class="section-head">
+      <text class="section-name">整体内容建议</text>
+    </view>
+    <panel-card wx:if="{{mode === 'grade' && contentAdvice}}" extraClass="list-card content-advice-card">
+      <text class="content-advice-text">{{contentAdvice}}</text>
+    </panel-card>
+
+    <view wx:if="{{mode === 'grade'}}" class="section-head diagnostic-head">
+      <view>
+        <text class="section-name">必须修改的错误</text>
+        <text class="section-subtitle">不改会影响准确性或得分</text>
+      </view>
+      <text class="section-count">{{corrections.length}}</text>
     </view>
     <panel-card wx:if="{{mode === 'grade'}}" extraClass="list-card">
-      <view wx:for="{{errors}}" wx:key="index" class="error-item">
+      <view wx:for="{{corrections}}" wx:key="index" class="error-item">
         <text class="tag tag-err">{{item.tag}}</text>
         <view class="error-body">
           <text class="error-label">原句</text>
-          <text class="error-from {{item.isRealError ? 'real-error' : ''}}">
-            {{item.from}}
-          </text>
-
-          <text class="error-label">建议</text>
+          <text class="error-from real-error">{{item.from}}</text>
+          <text class="error-label">修改为</text>
           <text class="error-to">{{item.to}}</text>
-
           <text class="error-reason">说明：{{item.reason}}</text>
         </view>
       </view>
-      <view wx:if="{{!errors.length}}" class="empty-section">
-        <text>本次没有返回逐句修改建议，请以总评和提分稿为准。</text>
+      <view wx:if="{{!corrections.length}}" class="empty-section">
+        <text>本次没有发现需要修改的真实错误。</text>
       </view>
     </panel-card>
 
-    <view wx:if="{{mode === 'grade'}}" class="section-head">
-      <text class="section-name">亮点</text>
+    <view wx:if="{{mode === 'grade'}}" class="section-head diagnostic-head">
+      <view>
+        <text class="section-name">可以更好的表达</text>
+        <text class="section-subtitle">原句没有错，这是更自然的写法</text>
+      </view>
+      <text class="section-count section-count-upgrade">{{upgrades.length}}</text>
     </view>
     <panel-card wx:if="{{mode === 'grade'}}" extraClass="list-card">
-      <view wx:for="{{highlights}}" wx:key="index" class="highlight-item">
-        <text class="tag tag-good">{{item.tag}}</text>
-        <text class="highlight-text">{{item.text}}</text>
+      <view wx:for="{{upgrades}}" wx:key="index" class="error-item upgrade-item">
+        <text class="tag tag-upgrade">{{item.tag}}</text>
+        <view class="error-body">
+          <text class="error-label">原句</text>
+          <text class="upgrade-from">{{item.from}}</text>
+          <text class="error-label">可以换成</text>
+          <text class="upgrade-to">{{item.to}}</text>
+          <text class="error-reason">说明：{{item.reason}}</text>
+        </view>
       </view>
-      <view wx:if="{{!highlights.length}}" class="empty-section">
-        <text>本次没有单独标注亮点。</text>
+      <view wx:if="{{!upgrades.length}}" class="empty-section">
+        <text>本次没有额外的表达升级建议。</text>
       </view>
     </panel-card>
+    <view wx:if="{{mode === 'grade' && legacyNotice}}" class="legacy-notice">
+      历史记录自动分类：这份旧报告没有结构化类型，已按原有说明归类，仅供参考。
+    </view>
 
-    <view class="action-row">
+    <view wx:if="{{mode === 'grade'}}" class="section-head">
+      <text class="section-name">整篇提分稿</text>
+    </view>
+    <panel-card wx:if="{{mode === 'grade'}}" extraClass="list-card improved-essay-card">
+      <text wx:if="{{improvedEssay}}" class="improved-essay">{{improvedEssay}}</text>
+      <text wx:else class="empty-section">本次没有返回整篇提分稿。</text>
+    </panel-card>
+
+    <view wx:if="{{mode === 'grade' && modelEssayAvailable}}" class="model-essay-section">
+      <view class="section-head model-essay-heading">
+        <view>
+          <text class="section-name">同题范文学习</text>
+          <text class="section-subtitle">先看结构和表达，不把范文当成唯一答案</text>
+        </view>
+        <text wx:if="{{modelEssayReady}}" class="model-essay-band">{{modelEssay.targetBand}}</text>
+      </view>
+
+      <panel-card wx:if="{{!modelEssayReady}}" extraClass="list-card model-essay-entry-card">
+        <text class="model-essay-entry-title">生成同题高分范文</text>
+        <text class="model-essay-entry-copy">结合你的原文和本次批改，生成范文、逐段得分点和表达对比。每篇作文首次生成免费。</text>
+        <button class="model-essay-generate" loading="{{modelEssayLoading}}" disabled="{{modelEssayLoading}}" bindtap="generateModelEssay">
+          {{modelEssayLoading ? '正在生成学习范文…' : '生成同题高分范文'}}
+        </button>
+        <text wx:if="{{modelEssayError}}" class="model-essay-error">{{modelEssayError}}</text>
+      </panel-card>
+
+      <panel-card wx:else extraClass="list-card model-essay-content-card">
+        <view class="model-essay-toolbar">
+          <text class="model-essay-tip">建议先独立修改，再对照学习</text>
+          <button class="model-essay-regenerate" loading="{{modelEssayLoading}}" disabled="{{modelEssayLoading}}" bindtap="regenerateModelEssay">重新生成</button>
+        </view>
+        <text wx:if="{{modelEssayError}}" class="model-essay-error">{{modelEssayError}}</text>
+
+        <view class="learning-block">
+          <text class="learning-title">完整范文</text>
+          <text class="model-essay-text essay-font">{{modelEssay.modelEssay}}</text>
+        </view>
+
+        <view class="learning-block">
+          <text class="learning-title">逐段拆解</text>
+          <view wx:for="{{modelEssay.paragraphInsights}}" wx:key="index" class="insight-item">
+            <text class="insight-title">{{item.title}}</text>
+            <text class="insight-purpose">{{item.purpose}}</text>
+            <text wx:if="{{item.keyExpression}}" class="insight-expression essay-font">{{item.keyExpression}}</text>
+          </view>
+        </view>
+
+        <view class="learning-block">
+          <text class="learning-title">表达对比</text>
+          <view wx:for="{{modelEssay.expressionComparisons}}" wx:key="index" class="comparison-item">
+            <text class="comparison-label">我的表达</text>
+            <text class="comparison-original essay-font">{{item.original}}</text>
+            <text class="comparison-label">推荐表达</text>
+            <text class="comparison-recommended essay-font">{{item.recommended}}</text>
+            <text class="comparison-reason">{{item.reason}}</text>
+          </view>
+        </view>
+
+        <view class="learning-block reusable-block">
+          <text class="learning-title">高分句式</text>
+          <text wx:for="{{modelEssay.reusableExpressions}}" wx:key="index" class="reusable-expression essay-font">{{index + 1}}. {{item}}</text>
+        </view>
+      </panel-card>
+    </view>
+
+    <view wx:if="{{mode === 'grade'}}" class="section-head">
+      <text class="section-name">下一次建议练习</text>
+    </view>
+    <panel-card wx:if="{{mode === 'grade'}}" extraClass="list-card next-practice-card">
+      <text wx:if="{{nextPractice}}" class="next-practice-text">{{nextPractice}}</text>
+      <text wx:else class="empty-section">本次没有单独返回下一步练习建议。</text>
+    </panel-card>
+
+    <view class="action-row initial-action">
       <button class="report-btn report-btn-secondary" bindtap="goWrite">查看写作页</button>
-      <button class="report-btn report-btn-primary" bindtap="goHome">回到首页</button>
+      <button class="report-btn primary-btn" bindtap="goHome">回到首页</button>
     </view>
   </view>
 
@@ -77,7 +181,7 @@
     <panel-card extraClass="empty-card">
       <text class="empty-title">{{fallbackTitle}}</text>
       <text class="empty-text">先完成一次作文生成或严格批改，报告页就会出现真实数据。</text>
-      <button class="report-btn report-btn-primary solo-btn" bindtap="goWrite">去写作文</button>
+      <view class="initial-action"><button class="report-btn primary-btn solo-btn" bindtap="goWrite">去写作文</button></view>
     </panel-card>
   </view>
 </view>

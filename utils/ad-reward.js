@@ -1,11 +1,11 @@
 const { config } = require('./config');
-const { grantAdReward } = require('./request');
+const { requestAdRewardSession, grantAdReward } = require('./request');
 
 let videoAd = null;
 let adLoading = false;
 
 function isAdRewardAvailable(entitlement) {
-  if (entitlement && entitlement.subscriptionActive) {
+  if (!entitlement || entitlement.adRewardEnabled !== true || entitlement.subscriptionActive) {
     return false;
   }
   const adUnitId = String(config.adRewardAdUnitId || '');
@@ -43,7 +43,12 @@ function createVideoAd() {
 }
 
 function showRewardedVideoAd() {
-  return new Promise((resolve, reject) => {
+  return requestAdRewardSession().then((session) => new Promise((resolve, reject) => {
+    const nonce = String((session && session.nonce) || '');
+    if (!nonce) {
+      reject(new Error('广告播放凭证无效，请重新尝试'));
+      return;
+    }
     const ad = createVideoAd();
     if (!ad) {
       reject(new Error('当前环境不支持激励视频广告'));
@@ -59,7 +64,7 @@ function showRewardedVideoAd() {
       }
       adLoading = false;
       if (res && res.isEnded) {
-        grantAdReward()
+        grantAdReward(nonce)
           .then((data) => {
             resolve(data);
           })
@@ -84,7 +89,7 @@ function showRewardedVideoAd() {
         reject(new Error('广告加载失败，请稍后再试'));
       });
     });
-  });
+  }));
 }
 
 function offerAdRewardDialog() {

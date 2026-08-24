@@ -11,8 +11,8 @@ const TUTOR_CONFIG = {
     label: '句子纠错',
     placeholder: '粘贴需要检查的英文句子…',
     inputGuide: '一到三句需要检查的英文',
-    outputGuide: '错误判断、修改版本和原因解释',
-    quickActions: ['检查这句', '解释原因', '表达升级'],
+    outputGuide: '错误判断或可选的表达升级建议',
+    quickActions: ['检查错误', '升级表达'],
     welcome: '粘贴一句英文，我会区分真正的语法错误和普通的表达升级。'
   },
   mock: {
@@ -26,6 +26,7 @@ const TUTOR_CONFIG = {
 };
 const { uid } = require('../../utils/format');
 const { submitTaskAndOpenReport, resolveTaskRequestError, shouldReuseClientRequestId } = require('../../utils/task-flow');
+const { fetchAccountEntitlement } = require('../../utils/request');
 const { offerAdRewardDialog, isAdRewardAvailable } = require('../../utils/ad-reward');
 
 Page({
@@ -41,6 +42,19 @@ Page({
     inputPlaceholder: TUTOR_CONFIG.topic.placeholder,
     inputGuide: TUTOR_CONFIG.topic.inputGuide,
     outputGuide: TUTOR_CONFIG.topic.outputGuide,
+    grammarMode: 'correction',
+    grammarModes: [
+      {
+        id: 'correction',
+        label: '检查错误',
+        description: '判断句子有没有必须修改的语法、拼写或用词错误'
+      },
+      {
+        id: 'upgrade',
+        label: '升级表达',
+        description: '原句正确时，让表达更自然、更正式'
+      }
+    ],
     inputText: '',
     inputGhost: false,
     loading: false,
@@ -70,6 +84,7 @@ Page({
       inputPlaceholder: config.placeholder,
       inputGuide: config.inputGuide,
       outputGuide: config.outputGuide,
+      grammarMode: activeTab === 'grammar' ? this.data.grammarMode : 'correction',
       inputText: '',
       inputGhost: false,
       messages: [
@@ -90,6 +105,11 @@ Page({
     this.setData({ essayType });
   },
 
+  chooseGrammarMode(event) {
+    const grammarMode = event.currentTarget.dataset.mode === 'upgrade' ? 'upgrade' : 'correction';
+    this.setData({ grammarMode });
+  },
+
   chooseQuickAction(event) {
     const label = event.currentTarget.dataset.label || '';
     if (!label) {
@@ -100,17 +120,22 @@ Page({
       '给示例': '请围绕这个观点给我一个具体例子：',
       '帮我展开': '请帮我把这个观点展开成“观点＋理由＋例子”：',
 
-      '检查这句': '请检查这句话是否有真正的语法错误：',
-      '解释原因': '请解释这句话为什么需要修改：',
-      '表达升级': '这句话如果语法正确，请帮我做表达升级：',
+      '检查错误': '请检查这句话是否有必须修改的错误：',
+      '升级表达': '这句话语法正确时，请帮我做表达升级：',
 
       '给思路': '请根据下面的作文题目给我写作思路：',
       '诊断草稿': '请诊断下面这篇草稿的问题：',
       '下一步怎么写': '请告诉我这篇草稿下一步最应该补充什么：'
     };
+    const grammarMode = label === '升级表达'
+      ? 'upgrade'
+      : label === '检查错误'
+        ? 'correction'
+        : this.data.grammarMode;
     this.setData({
       inputText: templates[label] || label,
-      inputGhost: true
+      inputGhost: true,
+      grammarMode
     });
   },
 
@@ -141,7 +166,8 @@ Page({
       loading: true
     });
 
-    const payload = buildTutorPayload(this.data.activeTab, this.data.essayType, text, this.data.submitRequestId || uid('req'));
+    const tutorMode = this.data.activeTab === 'grammar' ? this.data.grammarMode : this.data.activeTab;
+    const payload = buildTutorPayload(tutorMode, this.data.essayType, text, this.data.submitRequestId || uid('req'));
     this.setData({
       submitRequestId: payload.clientRequestId
     });
@@ -157,21 +183,24 @@ Page({
           })
         });
       })
-      .catch((error) => {
+      .catch(async (error) => {
         if (!shouldReuseClientRequestId(error)) {
           this.setData({
             submitRequestId: ''
           });
         }
         const code = String((error && error.code) || '').trim();
-        if ((code === 'TRIAL_LIMIT_REACHED' || code === 'TRIAL_DAILY_LIMIT_REACHED') && isAdRewardAvailable()) {
-          this.setData({ loading: false });
-          offerAdRewardDialog()
-            .then(() => {
-              wx.showToast({ title: '已获得批改次数', icon: 'success' });
-            })
-            .catch(() => {});
-          return;
+        if (code === 'TRIAL_LIMIT_REACHED' || code === 'TRIAL_DAILY_LIMIT_REACHED') {
+          const entitlement = await fetchAccountEntitlement().catch(() => null);
+          if (isAdRewardAvailable(entitlement)) {
+            this.setData({ loading: false });
+            offerAdRewardDialog()
+              .then(() => {
+                wx.showToast({ title: '已获得批改次数', icon: 'success' });
+              })
+              .catch(() => {});
+            return;
+          }
         }
         const message = resolveTaskRequestError(error);
         this.setData({
@@ -190,24 +219,29 @@ Page({
   }
 });
 
-function buildTutorPayload(activeTab, essayType, text, clientRequestId) {
-  if (activeTab === 'grammar') {
+function buildTutorPayload(tutorMode, essayType, text, clientRequestId) {
+  if (tutorMode === 'correction' || tutorMode === 'upgrade') {
+    const isCorrection = tutorMode === 'correction';
     return {
       clientRequestId,
       mode: 'coach',
       essayType,
       coachStage: 'drafting',
-      coachMode: 'sentence_upgrade',
+      coachMode: isCorrection ? 'sentence_correction' : 'sentence_upgrade',
       band: 'band2',
       bandValue: '学霸版',
-      taskContent: '请按高考英语作文标准检查并升级下面的句子。',
+      taskContent: isCorrection
+        ? '请按高考英语作文标准检查下面句子是否存在必须修改的错误。'
+        : '请按高考英语作文标准为下面正确的句子提供可选的表达升级。',
       sourceMaterial: '',
       draftText: text,
-      requirements: '先判断是否存在真正的语法错误；如果语法正确，只能标为表达升级，并解释修改原因。'
+      requirements: isCorrection
+        ? '只判断必须修改的语法、拼写或用词错误；如无真实错误，明确说“未发现真实错误”，不得把可选升级说成错误。'
+        : '原句正确时，给出更自然、更正式的可选表达升级；所有改动都要说明为可选改进，而非错误。'
     };
   }
 
-  if (activeTab === 'mock') {
+  if (tutorMode === 'mock') {
     return {
       clientRequestId,
       mode: 'coach',

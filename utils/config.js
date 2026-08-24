@@ -1,4 +1,6 @@
 const { getMiniProgramRuntimeInfo } = require('./runtime');
+const releaseAdConfig = require('./release-ad-config');
+const releaseAdUnitId = String(releaseAdConfig.adRewardAdUnitId || '');
 
 const profileOptions = {
   local: {
@@ -16,14 +18,17 @@ const profileOptions = {
     serviceMode: 'http',
     apiBaseUrl: 'https://api.gaokaoessay.cn',
     billingMode: 'disabled',
-    requireHttps: true
+    requireHttps: true,
+    adRewardAdUnitId: releaseAdUnitId
   }
 };
 
 const runtimeInfo = getMiniProgramRuntimeInfo();
 const runtimeEnvVersion = String(runtimeInfo.envVersion || '').toLowerCase();
-const releaseProfileReady = getProfileConfigIssues(profileOptions.release, runtimeInfo).length === 0;
-const shouldUseReleaseProfile = releaseProfileReady;
+const shouldUseReleaseProfile = profileOptions.release.enabled !== false
+  && profileOptions.release.serviceMode === 'http'
+  && /^https:\/\//.test(profileOptions.release.apiBaseUrl)
+  && !isPlaceholderDomain(profileOptions.release.apiBaseUrl);
 
 // 默认优先走线上：开发者工具/真机/体验版/正式版都直接连 https://api.gaokaoessay.cn。
 // 如需本地调试后端，请把 release.enabled 改为 false 或设置 apiBaseUrl 为本地地址。
@@ -38,16 +43,21 @@ const config = {
   challengeEndpoint: '/api/gaokao-essay/challenge',
   authEndpoint: '/api/auth/wx-login',
   historyEndpoint: '/api/gaokao-essay/history',
+  modelEssayEndpoint: '/api/gaokao-essay/history',
   ocrEndpoint: '/api/ocr/extract',
   entitlementEndpoint: '/api/account/entitlement',
+  accountEndpoint: '/api/account',
+  dashboardEndpoint: '/api/account/dashboard',
   studyProfileEndpoint: '/api/account/study-profile',
   adRewardGrantEndpoint: '/api/account/ad-reward/grant',
+  adRewardSessionEndpoint: '/api/account/ad-reward/session',
   billingPlansEndpoint: '/api/billing/plans',
   debugSubscriptionEndpoint: '/api/billing/subscription/debug-activate',
   subscriptionCreateOrderEndpoint: '/api/billing/subscription/create-order',
   billingOrderStatusEndpoint: '/api/billing/orders',
   healthEndpoint: '/api/health',
-  adRewardAdUnitId: 'adunit-xxxxxxxxxxxxxxxx',
+  // Release packaging input. The ad-unit ID is public client configuration, not a secret.
+  adRewardAdUnitId: activeProfile === 'release' ? releaseAdUnitId : '',
   enableChunked: true,
   storageKeys: {
     history: 'gaokao-essay-history',
@@ -103,15 +113,25 @@ function getProfileConfigIssues(targetConfig, runtime = runtimeInfo) {
     issues.push('当前 apiBaseUrl 仍是占位域名，请替换成真实后端地址。');
   }
 
+  if (targetConfig.profileId === 'release' && !isUsableRewardedVideoAdUnit(targetConfig.adRewardAdUnitId)) {
+    issues.push('正式包缺少有效的激励视频广告位 ID；请由发布构建注入 WeChat `adunit-...` rewarded-video unit。');
+  }
+
   return issues;
 }
 
+function isUsableRewardedVideoAdUnit(value) {
+  const adUnitId = String(value || '');
+  return /^adunit-[A-Za-z0-9]{8,}$/.test(adUnitId) && !adUnitId.toLowerCase().includes('xxxxxxxx');
+}
+
 function getRemoteConfigIssues(targetConfig = config) {
-  return getProfileConfigIssues(targetConfig, runtimeInfo);
+  return getProfileConfigIssues(targetConfig, runtimeInfo)
+    .filter((issue) => !issue.includes('激励视频广告位 ID'));
 }
 
 function isReleaseProfileReady(targetConfig = config) {
-  return getRemoteConfigIssues(targetConfig).length === 0;
+  return getProfileConfigIssues(targetConfig, runtimeInfo).length === 0;
 }
 
 module.exports = {
@@ -124,5 +144,6 @@ module.exports = {
   getProfileConfigIssues,
   isLocalhostUrl,
   isPlaceholderDomain,
+  isUsableRewardedVideoAdUnit,
   isReleaseProfileReady
 };

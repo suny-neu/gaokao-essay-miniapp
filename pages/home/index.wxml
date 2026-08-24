@@ -1,111 +1,156 @@
 <view class="dashboard-page">
   <scroll-view scroll-y="true" class="dashboard-scroll">
-    <view class="dashboard-shell">
-      <view class="dashboard-topbar">
-        <view>
-          <text class="dashboard-title">你好，同学</text>
-          <text class="dashboard-subtitle">{{greetingText}}</text>
+    <view class="dashboard-shell" style="padding-top: {{homeTopInset}}px;">
+      <view class="dashboard-header">
+        <view class="header-copy">
+          <text class="dashboard-title">今天练什么</text>
+          <text class="dashboard-subtitle page-purpose">每天 10 分钟，稳步提升英语写作</text>
         </view>
-        <view class="countdown-box">
-          <text class="countdown-num num">{{daysToGaokao}}</text>
-          <text class="countdown-unit">距高考(天)</text>
+        <view class="countdown-card">
+          <text class="countdown-value num">{{daysToGaokao}}</text>
+          <text class="countdown-label">距高考</text>
         </view>
       </view>
 
-      <view class="auth-bar {{authState.loggedIn ? 'auth-bar-on' : ''}}" bindtap="goAuth">
-        <view class="auth-bar-icon">{{authState.loggedIn ? '✅' : '🔓'}}</view>
-        <view class="auth-bar-text">
-          <text class="auth-bar-title">{{authState.loggedIn ? '已登录' : '未登录'}}</text>
-          <text class="auth-bar-sub">{{authState.loggedIn ? authState.openIdMask : '点击微信登录，同步记录与会员'}}</text>
-        </view>
-        <button wx:if="{{!authState.loggedIn}}" class="auth-bar-btn" catchtap="handleHomeLogin" loading="{{authState.logging}}">微信登录</button>
-        <text wx:else class="auth-bar-enter">管理 ›</text>
-      </view>
-
-      <text class="section-title section-title-first">今日提升任务</text>
-      <panel-card extraClass="daily-task-card">
-        <view class="daily-task-top">
-          <view class="daily-task-copy">
-            <text class="daily-task-title">{{dailyTask.title}}</text>
-            <text class="daily-task-reason">{{dailyTask.reason}}</text>
+      <panel-card extraClass="task-card">
+        <view class="task-head">
+          <view class="task-eyebrow">
+            <view class="target-icon"><view class="target-dot"></view></view>
+            <text>今日提升任务</text>
           </view>
-          <text class="daily-task-time">约 {{dailyTask.minutes}} 分钟</text>
         </view>
-        <button class="daily-task-button" bindtap="startDailyTask">开始今日任务</button>
-      </panel-card>
-
-      <text class="section-title">本周进步</text>
-      <panel-card extraClass="week-card">
-        <text class="week-headline">{{weekSummary.headline || '完成两次同类型正式批改后，就能看到本周变化'}}</text>
-        <view wx:if="{{weekSummary.improved.length}}" class="change-row">
-          <text class="change-label change-good">进步</text>
-          <text class="change-text">{{weekSummary.improvedText}}</text>
-        </view>
-        <view wx:if="{{weekSummary.declined.length}}" class="change-row">
-          <text class="change-label change-watch">留意</text>
-          <text class="change-text">{{weekSummary.declinedText}}</text>
-        </view>
-      </panel-card>
-
-      <text class="section-title">能力趋势</text>
-      <view class="tab-row">
-        <view wx:for="{{growthEssayTypeTabs}}" wx:key="code"
-          class="tab-chip {{growthEssayType === item.code ? 'tab-chip-active' : ''}}"
-          data-type="{{item.code}}" bindtap="chooseGrowthEssayType">{{item.label}}</view>
-      </view>
-      <panel-card extraClass="trend-card">
-        <view class="metric-tabs">
-          <view wx:for="{{growthMetricTabs}}" wx:key="code"
-            class="metric-chip {{growthMetric === item.code ? 'metric-chip-active' : ''}}"
-            data-metric="{{item.code}}" bindtap="chooseGrowthMetric">{{item.label}}</view>
-        </view>
-        <view wx:if="{{growthTrendPoints.length}}" class="sparkline">
-          <view class="sparkline-area"></view>
-          <view wx:for="{{growthTrendSegments}}" wx:key="index" class="sparkline-segment" style="{{item.style}}"></view>
-          <view wx:for="{{growthTrendPoints}}" wx:key="index" class="sparkline-point" style="{{item.style}}"></view>
-        </view>
-        <view wx:else class="trend-empty">{{growthEmptyText}}</view>
-      </panel-card>
-
-      <text class="section-title">重复出现</text>
-      <view wx:if="{{growthErrors.length}}" class="growth-list">
-        <view wx:for="{{growthErrors}}" wx:key="code" class="growth-item">
-          <view>
-            <text class="growth-item-title">{{item.label}}</text>
-            <text class="growth-item-evidence">{{item.evidence || '建议放进今天的专项练习'}}</text>
+        <view class="task-body">
+          <view class="task-copy">
+            <text class="task-title">{{dailyTask.title}}</text>
+            <text class="task-reason">{{dailyTask.reason}}</text>
           </view>
-          <text class="status-pill {{item.status === 'REPEATED' ? 'status-repeat' : ''}}">
-            {{item.status === 'REPEATED' ? '重复出现' : '新发现'}}
-          </text>
+          <view class="task-visual" aria-hidden="true">
+            <view class="paper-sheet paper-back"></view>
+            <view class="paper-sheet paper-front">
+              <view class="paper-check"></view>
+              <view class="paper-line line-long"></view>
+              <view class="paper-line line-mid"></view>
+              <view class="paper-line line-short"></view>
+            </view>
+            <view class="task-pen"><view class="pen-clip"></view></view>
+          </view>
         </view>
-      </view>
-      <view wx:else class="empty-strip">暂未发现重复弱项，继续保持。</view>
+        <view class="task-duration">
+          <view class="clock-icon"><view></view></view>
+          <text>约 {{dailyTask.minutes || 10}} 分钟</text>
+        </view>
+        <view class="initial-action">
+          <button class="primary-btn task-primary" disabled="{{!dailyQuotaActionEnabled}}" bindtap="handleDailyPrimaryAction">{{dailyActionText}}</button>
+        </view>
+        <text class="task-quota">{{dailyQuotaText}}</text>
+      </panel-card>
 
-      <text class="section-title">已掌握</text>
-      <view wx:if="{{growthMasteryItems.length}}" class="mastery-wrap">
-        <text wx:for="{{growthMasteryItems}}" wx:key="code" class="mastery-chip">✓ {{item.label}}</text>
-      </view>
-      <view wx:else class="empty-strip">连续几篇不再出现的错误，会自动收进这里。</view>
+      <view class="metric-grid">
+        <panel-card extraClass="summary-metric-card">
+          <view class="metric-card-head">
+            <text class="metric-card-label">本周进步</text>
+            <view class="trend-mark"><view></view><view></view><view></view></view>
+          </view>
+          <text class="metric-card-value metric-value-{{weeklyMetric.tone}} num">{{weeklyMetric.value}}</text>
+          <text class="metric-status metric-status-{{weeklyMetric.tone}}">{{weeklyMetric.helper}}</text>
+        </panel-card>
 
-      <view class="action-row">
-        <button class="btn btn-primary" bindtap="goWrite">写作文</button>
-        <button class="btn btn-secondary" bindtap="goCoach">AI 陪练</button>
-        <button class="btn btn-ghost" bindtap="goReport">报告</button>
+        <panel-card extraClass="summary-metric-card">
+          <view class="metric-card-head">
+            <text class="metric-card-label">连续学习</text>
+            <view class="streak-ring"><view class="streak-flame"></view></view>
+          </view>
+          <view class="metric-value-row">
+            <text class="metric-card-value num">{{streakMetric.value}}</text>
+            <text class="metric-card-unit">{{streakMetric.unit}}</text>
+          </view>
+          <text class="metric-helper">{{streakMetric.helper}}</text>
+        </panel-card>
       </view>
 
-      <view wx:if="{{footerHint}}" class="footer-note">
-        <text class="footer-note-text">{{footerHint}}</text>
+      <panel-card extraClass="trend-dashboard-card">
+        <view class="card-heading-row">
+          <text class="dashboard-card-title">能力趋势</text>
+          <view class="type-tabs">
+            <view wx:for="{{growthEssayTypeTabs}}" wx:key="code"
+              class="type-tab {{growthEssayType === item.code ? 'type-tab-active' : ''}}"
+              data-type="{{item.code}}" bindtap="chooseGrowthEssayType">{{item.label}}</view>
+          </view>
+        </view>
+
+        <view class="dashboard-chart">
+          <view class="chart-grid-line chart-grid-top"></view>
+          <view class="chart-grid-line chart-grid-middle"></view>
+          <view class="chart-grid-line chart-grid-bottom"></view>
+          <view class="chart-area"></view>
+          <view wx:for="{{growthTrendSegments}}" wx:key="index" class="chart-segment" style="{{item.style}}"></view>
+          <view wx:for="{{growthTrendPoints}}" wx:key="index" class="chart-point" style="{{item.style}}"></view>
+          <view wx:if="{{!growthTrendPoints.length}}" class="chart-empty-overlay">
+            <text>{{growthEmptyText}}</text>
+            <button class="chart-empty-action" bindtap="startDailyTask">开始今天练习</button>
+          </view>
+        </view>
+        <view wx:if="{{growthTrendPoints.length}}" class="chart-date-row">
+          <text wx:for="{{growthTrendPoints}}" wx:key="index">{{item.dateLabel}}</text>
+        </view>
+
+        <view class="capability-row">
+          <view wx:for="{{capabilityMetrics}}" wx:key="label" class="capability-item">
+            <text class="capability-label">{{item.label}}</text>
+            <text class="capability-value num">{{item.value}}</text>
+          </view>
+        </view>
+      </panel-card>
+
+      <panel-card extraClass="priority-card">
+        <text class="dashboard-card-title">需要重点练习</text>
+        <view class="priority-list">
+          <view wx:for="{{priorityItems}}" wx:key="code" class="priority-item" bindtap="startDailyTask">
+            <view class="priority-symbol priority-symbol-{{item.tone}}"><view></view></view>
+            <view class="priority-copy">
+              <text class="priority-title">{{item.label}}</text>
+            </view>
+            <text wx:if="{{item.tone === 'attention'}}" class="priority-badge badge-attention">{{item.badge}}</text>
+            <text wx:else class="priority-badge badge-{{item.tone}}">{{item.badge}}</text>
+            <text class="priority-arrow">›</text>
+          </view>
+        </view>
+        <view wx:if="{{growthMasteryItems.length}}" class="mastery-strip">
+          <text class="mastery-label">已掌握</text>
+          <text class="mastery-text">{{growthMasteryItems[0].label}}</text>
+        </view>
+      </panel-card>
+
+      <view class="quick-nav">
+        <button class="quick-nav-item" bindtap="goWrite">
+          <view class="quick-icon write-icon"><view></view></view>
+          <text>写作文</text>
+        </button>
+        <button class="quick-nav-item" bindtap="goCoach">
+          <view class="quick-icon code-icon"><text>AI</text></view>
+          <text>AI 陪练</text>
+        </button>
+        <button class="quick-nav-item" bindtap="goReport">
+          <view class="quick-icon report-icon"><view></view><view></view><view></view></view>
+          <text>看报告</text>
+        </button>
       </view>
 
-      <view wx:if="{{loading}}" class="state-box">
-        <text class="state-title">首页数据加载中</text>
-        <text class="state-text">正在同步学习档案和最近批改记录。</text>
-      </view>
-
-      <view wx:if="{{loadError}}" class="state-box state-box-soft">
-        <text class="state-title">已降级展示</text>
-        <text class="state-text">{{loadError}}</text>
-      </view>
     </view>
   </scroll-view>
+
+  <view class="bottom-nav">
+    <button class="bottom-nav-item bottom-nav-active">
+      <view class="home-nav-icon"><view></view></view>
+      <text>首页</text>
+    </button>
+    <button class="bottom-nav-item" bindtap="goHistory">
+      <view class="history-nav-icon"><view></view></view>
+      <text>历史</text>
+    </button>
+    <button class="bottom-nav-item" bindtap="goAuth">
+      <view class="profile-nav-icon"><view></view></view>
+      <text>我的</text>
+    </button>
+  </view>
 </view>

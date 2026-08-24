@@ -5,12 +5,21 @@ const DIMENSION_DEFINITIONS = {
   vocabulary: { label: '词汇', maxScore: 2 }
 };
 
+const ERROR_TYPE_LABELS = {
+  GRAMMAR: '语法',
+  SPELLING: '拼写',
+  WORD_CHOICE: '用词',
+  PUNCTUATION: '标点',
+  CONTENT: '内容'
+};
+
 function buildReportViewModel(result = {}) {
   const isCoach = result.mode === 'coach';
   const analysis = result.analysis && typeof result.analysis === 'object'
     ? result.analysis
     : {};
   const score = parseScoreText(result.scoreText);
+  const diagnostics = buildDiagnostics(analysis);
 
   return {
     mode: isCoach ? 'coach' : 'grade',
@@ -23,7 +32,26 @@ function buildReportViewModel(result = {}) {
     dims: isCoach || !score.valid
       ? []
       : normalizeScoreDimensions(analysis.scoreDimensions, score.value),
-    errors: buildErrors(analysis),
+    corrections: diagnostics.corrections,
+    upgrades: diagnostics.upgrades,
+    legacyNotice: diagnostics.legacyNotice,
+    contentAdvice: joinAdvice(
+      analysis.contentDiagnosis,
+      ...diagnostics.contentSuggestions
+    ),
+    // Keep this alias for pages or records that still consume the old view-model shape.
+    errors: diagnostics.corrections,
+    improvedEssay: String(analysis.improvedEssay || '').trim(),
+    priority: firstNonEmpty(
+      analysis.lossPointDiagnosis,
+      analysis.languageDiagnosis,
+      analysis.structureDiagnosis,
+      analysis.overallComment
+    ),
+    nextPractice: firstNonEmpty(
+      analysis.secondDraftGuidance,
+      analysis.weaknessProfile && analysis.weaknessProfile.nextFocus
+    ),
     highlights: buildHighlights(result, analysis)
   };
 }
@@ -72,21 +100,135 @@ function normalizeScoreDimensions(value, expectedTotal) {
   return ordered;
 }
 
-function buildErrors(analysis) {
+function buildDiagnostics(analysis) {
   const diagnostics = Array.isArray(analysis.sentenceDiagnostics)
     ? analysis.sentenceDiagnostics
     : [];
-  return diagnostics.slice(0, 8).map((item) => {
-    const diagnosis = String((item && item.diagnosis) || '').trim();
-    const tag = classifyDiagnosis(diagnosis);
-    return {
+  const corrections = [];
+  const upgrades = [];
+  const contentSuggestions = [];
+  let legacyNotice = false;
+
+  diagnostics.forEach((item) => {
+    const row = buildDiagnosticRow(item);
+    if (!row) {
+      return;
+    }
+
+    if (hasOwn(item, 'kind')) {
+      const kind = normalizeToken(item.kind);
+      if (kind === 'ERROR_CORRECTION') {
+        if (!hasEnglishPair(row)) {
+          const suggestion = firstNonEmpty(row.reason, row.to, row.from);
+          if (suggestion) {
+            contentSuggestions.push(suggestion);
+          }
+          return;
+        }
+        corrections.push({
+          ...row,
+          tag: errorTypeLabel(item.errorType),
+          kind,
+          errorType: normalizeToken(item.errorType),
+          isRealError: true,
+          legacyInferred: Boolean(item.legacyInferred)
+        });
+      } else if (kind === 'EXPRESSION_UPGRADE') {
+        upgrades.push({
+          ...row,
+          tag: '表达升级',
+          kind,
+          errorType: 'NONE',
+          isRealError: false,
+          legacyInferred: Boolean(item.legacyInferred)
+        });
+      }
+      return;
+    }
+
+    const tag = classifyDiagnosis(row.reason);
+    const legacyRow = {
+      ...row,
       tag,
-      from: String((item && item.original) || '').trim(),
-      to: String((item && item.revision) || '').trim(),
-      reason: diagnosis,
-      isRealError: tag === '语法' || tag === '拼写'
+      kind: tag === '表达升级' ? 'EXPRESSION_UPGRADE' : 'ERROR_CORRECTION',
+      errorType: legacyErrorType(tag),
+      isRealError: tag !== '表达升级',
+      legacyInferred: true
     };
-  }).filter((item) => item.from || item.to || item.reason);
+    if (legacyRow.isRealError) {
+      if (hasEnglishPair(legacyRow)) {
+        corrections.push(legacyRow);
+      } else {
+        const suggestion = firstNonEmpty(legacyRow.reason, legacyRow.to, legacyRow.from);
+        if (suggestion) {
+          contentSuggestions.push(suggestion);
+        }
+      }
+    } else {
+      upgrades.push(legacyRow);
+    }
+    legacyNotice = true;
+  });
+
+  return { corrections, upgrades, contentSuggestions, legacyNotice };
+}
+
+function buildDiagnosticRow(item) {
+  const diagnosis = String((item && item.diagnosis) || '').trim();
+  const row = {
+    from: String((item && item.original) || '').trim(),
+    to: String((item && item.revision) || '').trim(),
+    reason: diagnosis
+  };
+  return row.from || row.to || row.reason ? row : null;
+}
+
+function hasEnglishPair(row) {
+  return isEnglishText(row.from) && isEnglishText(row.to);
+}
+
+function isEnglishText(value) {
+  const text = String(value || '').trim();
+  return /[A-Za-z]/.test(text) && !/[\u3400-\u9fff]/.test(text);
+}
+
+function joinAdvice(...values) {
+  return Array.from(new Set(values.map((value) => String(value || '').trim()).filter(Boolean))).join('\n');
+}
+
+function errorTypeLabel(errorType) {
+  return ERROR_TYPE_LABELS[normalizeToken(errorType)] || '错误';
+}
+
+function legacyErrorType(tag) {
+  if (tag === '语法') {
+    return 'GRAMMAR';
+  }
+  if (tag === '拼写') {
+    return 'SPELLING';
+  }
+  if (tag === '内容补充') {
+    return 'CONTENT';
+  }
+  return 'NONE';
+}
+
+function hasOwn(value, key) {
+  return Boolean(value) && Object.prototype.hasOwnProperty.call(value, key);
+}
+
+function normalizeToken(value) {
+  return String(value || '').trim().toUpperCase();
+}
+
+function firstNonEmpty(...values) {
+  for (const value of values) {
+    const text = String(value || '').trim();
+    if (text) {
+      return text;
+    }
+  }
+  return '';
 }
 
 function buildHighlights(result, analysis) {

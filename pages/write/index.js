@@ -1,6 +1,6 @@
 const { uid } = require('../../utils/format');
 const { submitTaskAndOpenReport, resolveTaskRequestError, shouldReuseClientRequestId } = require('../../utils/task-flow');
-const { extractOcrText } = require('../../utils/request');
+const { extractOcrText, fetchAccountEntitlement } = require('../../utils/request');
 const { offerAdRewardDialog, isAdRewardAvailable } = require('../../utils/ad-reward');
 const {
   normalizeQuestionFields,
@@ -199,10 +199,13 @@ Page({
 
       if (this.data.essayType === 'continuation') {
         const question = applyQuestionOcr(this.data, result);
+        const fullySplit = hasCompleteContinuationQuestion(question);
         this.setData({
           ...question,
           editingContinuationQuestion: true,
-          submitStatus: '原文识别完成，请检查并填写两段段首句'
+          submitStatus: fullySplit
+            ? '已自动拆分原文和两段首句，请逐项校对'
+            : '题目已识别，请检查并补全未拆分出的段首句'
         });
       } else {
         this.setData({
@@ -392,9 +395,12 @@ Page({
           submitRequestId: ''
         });
       }
-      if (isQuotaExhaustedError(error) && isAdRewardAvailable()) {
-        this.handleAdRewardOffer();
-        return;
+      if (isQuotaExhaustedError(error)) {
+        const entitlement = await fetchAccountEntitlement().catch(() => null);
+        if (isAdRewardAvailable(entitlement)) {
+          this.handleAdRewardOffer();
+          return;
+        }
       }
       const message = resolveTaskRequestError(error);
       this.setData({

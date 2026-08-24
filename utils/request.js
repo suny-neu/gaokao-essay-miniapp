@@ -2,6 +2,7 @@ const { config, getRemoteConfigIssues, isLocalhostUrl } = require('./config');
 const { countEnglishWords, uid } = require('./format');
 const { getAuthToken, getOpenId, getLoginCode, saveAuthSession, isAuthSessionValid, clearAuthSession } = require('./auth');
 const { normalizeScoreDimensions } = require('./report-view-model');
+const { buildModelEssayViewModel } = require('./model-essay');
 const { getDeviceId } = require('./device-id');
 const {
   getHistory,
@@ -9,6 +10,8 @@ const {
   deleteHistoryItem: deleteLocalHistoryItem,
   clearHistoryByFilter
 } = require('./storage');
+
+let authSessionPromise = null;
 
 function submitEssayTask(payload, handlers = {}) {
   return requestRemote(payload, handlers);
@@ -47,11 +50,36 @@ function fetchStudyProfile(essayType = 'application') {
     .then((data) => normalizeStudyProfile(data));
 }
 
-function grantAdReward() {
-  const { getDeviceId } = require('./device-id');
-  return requestJson(config.adRewardGrantEndpoint, {
+function fetchDashboard(essayType = 'application') {
+  const normalizedType = essayType === 'continuation' ? 'continuation' : 'application';
+  return requestJson(`${config.dashboardEndpoint}?essayType=${encodeURIComponent(normalizedType)}`)
+    .then((data) => normalizeDashboard(data));
+}
+
+function buildModelEssayPath(recordId) {
+  return `${config.modelEssayEndpoint}/${encodeURIComponent(String(recordId || ''))}/model-essay`;
+}
+
+function fetchModelEssay(recordId, regenerate = false) {
+  return requestJson(buildModelEssayPath(recordId), {
+    method: 'POST',
+    data: { regenerate: Boolean(regenerate) },
+    timeout: 60000
+  });
+}
+
+function requestAdRewardSession() {
+  return requestJson(config.adRewardSessionEndpoint, {
     method: 'POST',
     data: {},
+    timeout: 10000
+  });
+}
+
+function grantAdReward(nonce) {
+  return requestJson(config.adRewardGrantEndpoint, {
+    method: 'POST',
+    data: { nonce: String(nonce || '') },
     timeout: 10000
   });
 }
@@ -267,7 +295,8 @@ async function requestJson(path, options = {}, hasRetried = false) {
       timeout: options.timeout || 15000,
       header: {
         'content-type': 'application/json',
-        Authorization: authContext.token ? `Bearer ${authContext.token}` : ''
+        Authorization: authContext.token ? `Bearer ${authContext.token}` : '',
+        'X-Device-ID': getDeviceId()
       },
       data: options.data || {},
       success(res) {
@@ -297,6 +326,13 @@ async function requestJson(path, options = {}, hasRetried = false) {
         reject(normalizeTransportError(err, `${config.apiBaseUrl}${path}`));
       }
     });
+  });
+}
+
+function deleteAccount() {
+  return requestJson(config.accountEndpoint, {
+    method: 'DELETE',
+    data: { confirmation: 'DELETE' }
   });
 }
 
@@ -395,7 +431,31 @@ function requestPublicJson(path, options = {}) {
 async function prepareAuthorizedContext() {
   const cachedOpenId = getOpenId();
   const needsFreshLogin = !isAuthSessionValid() || !cachedOpenId;
-  const loginCode = needsFreshLogin ? await getLoginCode().catch(() => '') : '';
+  if (!needsFreshLogin) {
+    return {
+      loginCode: '',
+      token: getAuthToken(),
+      openId: cachedOpenId
+    };
+  }
+
+  if (!authSessionPromise) {
+    authSessionPromise = createAuthorizedContext();
+  }
+
+  const pendingSession = authSessionPromise;
+  try {
+    return await pendingSession;
+  } finally {
+    if (authSessionPromise === pendingSession) {
+      authSessionPromise = null;
+    }
+  }
+}
+
+async function createAuthorizedContext() {
+  const cachedOpenId = getOpenId();
+  const loginCode = await getLoginCode();
   const session = await ensureAuthSession(loginCode);
   return {
     loginCode,
@@ -421,7 +481,7 @@ async function ensureAuthSession(loginCode) {
     };
   }
 
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     wx.request({
       url: `${config.apiBaseUrl}${config.authEndpoint}`,
       method: 'POST',
@@ -443,16 +503,14 @@ async function ensureAuthSession(loginCode) {
           });
           return;
         }
-        resolve({
-          token: localToken,
-          openId: localOpenId
-        });
+        const apiResponse = unwrapApiResponse(res.data || {});
+        reject(createRequestError(
+          apiResponse.message || `微信登录失败：HTTP ${res.statusCode}`,
+          apiResponse.code || 'WECHAT_LOGIN_FAILED'
+        ));
       },
-      fail() {
-        resolve({
-          token: localToken,
-          openId: localOpenId
-        });
+      fail(err) {
+        reject(normalizeTransportError(err, `${config.apiBaseUrl}${config.authEndpoint}`));
       }
     });
   });
@@ -554,10 +612,33 @@ function normalizeStudyProfile(data = {}) {
   };
 }
 
+function normalizeDashboard(data = {}) {
+  const weekly = data.weekly && typeof data.weekly === 'object' ? data.weekly : {};
+  const streak = data.streak && typeof data.streak === 'object' ? data.streak : {};
+  return {
+    essayType: data.essayType === 'continuation' ? 'continuation' : 'application',
+    generatedAt: Number(data.generatedAt || 0),
+    entitlement: data.entitlement && typeof data.entitlement === 'object' ? data.entitlement : null,
+    growth: data.growth && typeof data.growth === 'object' ? data.growth : null,
+    weekly: {
+      delta: Number(weekly.delta || 0),
+      label: String(weekly.label || '等待更多记录'),
+      status: String(weekly.status || 'PENDING').toUpperCase()
+    },
+    streak: {
+      days: Math.max(0, Number(streak.days || 0)),
+      label: String(streak.label || '开始第一次练习')
+    }
+  };
+}
+
 function normalizeOcrResponse(data, scene) {
   const text = String((data && data.text) || (data && data.content) || '').trim();
   return {
     text,
+    sourceMaterial: String((data && data.sourceMaterial) || '').trim(),
+    paragraphOneStarter: String((data && data.paragraphOneStarter) || '').trim(),
+    paragraphTwoStarter: String((data && data.paragraphTwoStarter) || '').trim(),
     lineCount: Number(data && data.lineCount) || countTextLines(text),
     source: (data && data.source) || 'remote',
     provider: (data && data.provider) || 'ocr',
@@ -1019,18 +1100,41 @@ function normalizeGradeAnalysis(analysis) {
     overallComment: String(analysis.overallComment || ''),
     secondDraftGuidance: String(analysis.secondDraftGuidance || ''),
     improvedEssay: String(analysis.improvedEssay || ''),
+    modelEssay: analysis.modelEssay ? buildModelEssayViewModel(analysis.modelEssay) : null,
     scoreDimensions: normalizeScoreDimensions(analysis.scoreDimensions),
-    sentenceDiagnostics: Array.isArray(analysis.sentenceDiagnostics)
-      ? analysis.sentenceDiagnostics
-        .map((item) => ({
-          original: String((item && item.original) || ''),
-          diagnosis: String((item && item.diagnosis) || ''),
-          revision: String((item && item.revision) || '')
-        }))
-        .filter((item) => item.original || item.diagnosis || item.revision)
-      : [],
+    sentenceDiagnostics: normalizeSentenceDiagnostics(analysis.sentenceDiagnostics),
     weaknessProfile
   };
+}
+
+function normalizeSentenceDiagnostics(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item) => {
+      const normalized = {
+        original: String((item && item.original) || ''),
+        diagnosis: String((item && item.diagnosis) || ''),
+        revision: String((item && item.revision) || '')
+      };
+      if (hasOwn(item, 'kind')) {
+        normalized.kind = String(item.kind || '').trim();
+      }
+      if (hasOwn(item, 'errorType')) {
+        normalized.errorType = String(item.errorType || '').trim();
+      }
+      if (hasOwn(item, 'legacyInferred')) {
+        normalized.legacyInferred = Boolean(item.legacyInferred);
+      }
+      return normalized;
+    })
+    .filter((item) => item.original || item.diagnosis || item.revision);
+}
+
+function hasOwn(value, key) {
+  return Boolean(value) && Object.prototype.hasOwnProperty.call(value, key);
 }
 
 function normalizeCoachPlan(plan) {
@@ -1087,7 +1191,10 @@ module.exports = {
   submitEssayTask,
   extractOcrText,
   fetchAccountEntitlement,
+  fetchDashboard,
+  fetchModelEssay,
   fetchStudyProfile,
+  requestAdRewardSession,
   grantAdReward,
   fetchBillingPlans,
   activateMembershipPlan,
@@ -1096,5 +1203,8 @@ module.exports = {
   fetchEssayHistoryPage,
   fetchEssayHistoryDetail,
   deleteEssayHistoryItem,
-  clearEssayHistory
+  clearEssayHistory,
+  deleteAccount,
+  normalizeDashboard,
+  buildModelEssayPath
 };

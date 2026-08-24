@@ -3,13 +3,13 @@ const { formatTime } = require('./format');
 function buildEmptyEntitlement() {
   return {
     subscriptionActive: false,
-    accessMode: 'trial',
-    trialPolicy: 'total',
-    trialLimit: 5,
-    trialTotalLimit: 5,
-    trialDailyLimit: 0,
+    accessMode: 'unavailable',
+    trialPolicy: 'unknown',
+    trialLimit: null,
+    trialTotalLimit: null,
+    trialDailyLimit: null,
     trialUsed: 0,
-    trialRemaining: 5,
+    trialRemaining: null,
     trialResetAt: '',
     subscriptionStatus: 'INACTIVE',
     subscriptionPlanCode: '',
@@ -18,7 +18,7 @@ function buildEmptyEntitlement() {
     subscriptionExpiresAt: '',
     subscriptionAutoRenew: false,
     subscriptionProvider: '',
-    adRewardEnabled: true,
+    adRewardEnabled: false,
     adRewardCredits: 0,
     serverTime: ''
   };
@@ -31,21 +31,36 @@ function buildEntitlementCard(entitlement = {}) {
   };
 
   if (normalized.subscriptionActive) {
+    const isLifetime = normalized.subscriptionPlanCode === 'founder_lifetime';
     return {
       eyebrow: '会员权益',
       title: `已开通${normalized.subscriptionPlanName || '会员'}`,
-      subtitle: normalized.subscriptionExpiresAt
+      subtitle: isLifetime
+        ? '终身不限量'
+        : normalized.subscriptionExpiresAt
         ? `有效期至 ${formatTimeText(normalized.subscriptionExpiresAt)}`
         : '当前账号已解锁不限次使用。',
       tags: [
         '不限次作文生成',
         '不限次严格批改',
-        normalized.subscriptionAutoRenew ? '自动续费已开启' : '可继续切换套餐'
+        isLifetime ? '终身不限量' : (normalized.subscriptionAutoRenew ? '自动续费已开启' : '可继续切换套餐')
       ],
       progressPercent: 100,
       progressLabel: isDebugSubscription(normalized)
         ? '当前是联调会员态，不会真实扣费'
         : '当前是正式会员态',
+      actionLabel: '查看套餐'
+    };
+  }
+
+  if (normalized.trialPolicy === 'unknown') {
+    return {
+      eyebrow: '使用额度',
+      title: '额度暂不可用',
+      subtitle: '请等待服务端确认后再开始批改。',
+      tags: ['额度待确认', '广告奖励待确认'],
+      progressPercent: 0,
+      progressLabel: '暂不扣减本地额度',
       actionLabel: '查看套餐'
     };
   }
@@ -102,11 +117,27 @@ function decoratePlans(plans = [], entitlement = {}, activatingPlanCode = '', bi
   const liveBillingEnabled = billingMode === 'live';
 
   return plans.map((plan) => {
+    const isLifetime = !!plan.lifetime;
+    const serverConfigured = Boolean(
+      plan.planCode
+      && plan.planName
+      && Number(plan.priceFen) > 0
+      && (isLifetime || Number(plan.durationDays) > 0)
+    );
     const isCurrent = !!entitlement.subscriptionActive && currentPlanCode === plan.planCode;
+    const isLifetimeMember = !!entitlement.subscriptionActive && currentPlanCode === 'founder_lifetime';
+    const lockedByLifetime = isLifetimeMember && !isLifetime;
+    const paymentUnavailable = liveBillingEnabled && plan.purchasable !== true;
     const actionLabel = activatingPlanCode === plan.planCode
       ? '开通中...'
       : isCurrent
         ? '当前套餐'
+        : lockedByLifetime
+          ? '已享终身权益'
+        : liveBillingEnabled && !serverConfigured
+          ? '暂未配置'
+        : paymentUnavailable
+          ? (plan.paymentMode === 'configured-but-unready' ? '支付未就绪' : '暂未开放')
         : liveBillingEnabled
           ? '立即开通'
           : allowDebugActivate
@@ -114,11 +145,15 @@ function decoratePlans(plans = [], entitlement = {}, activatingPlanCode = '', bi
             : '暂未开放';
     return {
       ...plan,
-      badgeLabel: plan.recommended ? '更推荐' : `${plan.durationDays} 天`,
+      lifetime: isLifetime,
+      serverConfigured,
+      badgeLabel: isLifetime ? '终身不限量' : (plan.recommended ? '更推荐' : `${plan.durationDays} 天`),
       toneClass: plan.recommended ? 'plan-card-recommended' : '',
       actionLabel,
-      actionDisabled: activatingPlanCode === plan.planCode || isCurrent || (!allowDebugActivate && !liveBillingEnabled),
-      helperText: isCurrent && currentPlanExpireText
+      actionDisabled: activatingPlanCode === plan.planCode || isCurrent || lockedByLifetime || (liveBillingEnabled && (!serverConfigured || paymentUnavailable)) || (!allowDebugActivate && !liveBillingEnabled),
+      helperText: isCurrent && isLifetime
+        ? '终身不限量'
+        : isCurrent && currentPlanExpireText
         ? `当前有效期至 ${currentPlanExpireText}`
         : plan.description
     };

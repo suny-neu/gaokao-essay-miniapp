@@ -1,5 +1,7 @@
-const { getLastResult, normalizeGradeAnalysis } = require('../../utils/storage');
+const { getLastResult, normalizeGradeAnalysis, saveHistoryItem } = require('../../utils/storage');
 const { buildReportViewModel } = require('../../utils/report-view-model');
+const { fetchModelEssay } = require('../../utils/request');
+const { buildModelEssayViewModel, canGenerateModelEssay } = require('../../utils/model-essay');
 
 Page({
   data: {
@@ -13,11 +15,21 @@ Page({
     scoreSuffix: '',
     deltaText: '',
     dims: [],
-    errors: [],
-    highlights: [],
+    corrections: [],
+    upgrades: [],
+    contentAdvice: '',
+    improvedEssay: '',
+    priority: '',
+    nextPractice: '',
+    legacyNotice: false,
     coachBlocks: [],
     rawContent: '',
-    fallbackTitle: '还没有批改报告'
+    fallbackTitle: '还没有批改报告',
+    modelEssayAvailable: false,
+    modelEssayLoading: false,
+    modelEssayReady: false,
+    modelEssayError: '',
+    modelEssay: buildModelEssayViewModel(null)
   },
 
   onLoad() {
@@ -33,6 +45,11 @@ Page({
       analysis
     });
     const isCoach = viewModel.mode === 'coach';
+    const modelEssay = buildModelEssayViewModel(analysis && analysis.modelEssay);
+    this.currentResult = {
+      ...result,
+      analysis
+    };
     this.setData({
       ready: true,
       mode: viewModel.mode,
@@ -44,12 +61,76 @@ Page({
       scoreSuffix: viewModel.scoreSuffix,
       deltaText: viewModel.deltaText,
       dims: viewModel.dims,
-      errors: viewModel.errors,
-      highlights: viewModel.highlights,
+      corrections: viewModel.corrections,
+      upgrades: viewModel.upgrades,
+      contentAdvice: viewModel.contentAdvice,
+      improvedEssay: viewModel.improvedEssay,
+      priority: viewModel.priority,
+      nextPractice: viewModel.nextPractice,
+      legacyNotice: viewModel.legacyNotice,
       coachBlocks: buildCoachBlocks(result),
       rawContent: String(result.content || '').trim(),
-      fallbackTitle: isCoach ? '还没有陪练记录' : '还没有批改报告'
+      fallbackTitle: isCoach ? '还没有陪练记录' : '还没有批改报告',
+      modelEssayAvailable: canGenerateModelEssay(this.currentResult),
+      modelEssayReady: Boolean(modelEssay.modelEssay),
+      modelEssay
     });
+  },
+
+  async generateModelEssay() {
+    await this.loadModelEssay(false);
+  },
+
+  regenerateModelEssay() {
+    wx.showModal({
+      title: '重新生成范文',
+      content: '重新生成将消耗 1 次 AI 额度，已生成的范文会被新结果替换。',
+      confirmText: '继续生成',
+      success: (result) => {
+        if (result.confirm) {
+          this.loadModelEssay(true);
+        }
+      }
+    });
+  },
+
+  async loadModelEssay(regenerate) {
+    if (!this.data.modelEssayAvailable || this.data.modelEssayLoading || !this.currentResult) {
+      return;
+    }
+    this.setData({
+      modelEssayLoading: true,
+      modelEssayError: ''
+    });
+    try {
+      const payload = await fetchModelEssay(this.currentResult.id, regenerate);
+      const modelEssay = buildModelEssayViewModel(payload);
+      if (!modelEssay.modelEssay) {
+        throw new Error('范文内容为空，请稍后重试');
+      }
+      this.currentResult = {
+        ...this.currentResult,
+        analysis: {
+          ...(this.currentResult.analysis || {}),
+          modelEssay
+        }
+      };
+      saveHistoryItem(this.currentResult);
+      const app = getApp();
+      app.globalData.currentResult = this.currentResult;
+      this.setData({
+        modelEssayReady: true,
+        modelEssay
+      });
+    } catch (error) {
+      this.setData({
+        modelEssayError: String((error && error.message) || '范文生成失败，请稍后重试')
+      });
+    } finally {
+      this.setData({
+        modelEssayLoading: false
+      });
+    }
   },
 
   goWrite() {
@@ -128,6 +209,9 @@ function mapCoachMode(mode) {
   }
   if (mode === 'outline') {
     return '构思提纲';
+  }
+  if (mode === 'sentence_correction') {
+    return '检查错误';
   }
   if (mode === 'sentence_upgrade') {
     return '句子升级';

@@ -80,6 +80,21 @@
 - 💡 成本：当前 `qwen-plus` 约 ¥36/万次批改；如量很大可继续降档 `qwen-turbo`（¥12/万次，质量偏弱）。
 - 💡 关注阿里云百炼余额，建议开用量告警，避免上线后突然断服务。
 
+### 发布版激励视频广告位 🟠 必做
+
+发布包静态读取仓库跟踪的 `utils/release-ad-config.js`，因此能在微信运行时直接加载。该文件的默认值为空；发布生成器会临时把它改为广告位 ID，`--dev` 会恢复为空值。广告位 ID 属于公开的客户端配置，不是密钥；它会产生工作区修改，只有在确实希望将该发布包输入提交到版本库时才提交。
+
+1. [ ] 在微信公众平台创建并取得**激励视频**广告单元 ID（格式为 `adunit-...`）。
+2. [ ] 在前端项目根目录执行：
+
+```bash
+GAOKAO_RELEASE_AD_UNIT_ID='adunit-你的真实广告位ID' node scripts/generate-release-ad-config.js
+GAOKAO_RELEASE_AD_UNIT_ID='adunit-你的真实广告位ID' node scripts/generate-release-ad-config.js --validate
+node --test tests/*.test.js
+```
+
+缺少、占位符或格式不合法的 ID 会使生成/校验失败；校验也会在生成文件与环境变量不一致时失败。日常本地开发或测试可执行 `node scripts/generate-release-ad-config.js --dev`，它将被跟踪的打包输入复位为明确不可用的空配置，因此应用会保持在本地配置而不会误启用发布广告奖励。打包完成后，如不准备提交该广告位 ID，请再次执行 `--dev` 再提交其他代码。
+
 ---
 
 ## 五、回滚预案（万一上线翻车）

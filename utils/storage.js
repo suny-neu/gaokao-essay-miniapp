@@ -2,6 +2,7 @@ const { config } = require('./config');
 const { modeLabelMap, typeLabelMap, bandLabelMap } = require('./constants');
 const { summarizeText } = require('./format');
 const { normalizeScoreDimensions } = require('./report-view-model');
+const { buildModelEssayViewModel } = require('./model-essay');
 
 function getHistory() {
   return (wx.getStorageSync(config.storageKeys.history) || []).map(normalizeSessionRecord);
@@ -141,16 +142,9 @@ function normalizeGradeAnalysis(analysis) {
     overallComment: analysis.overallComment || '',
     secondDraftGuidance: analysis.secondDraftGuidance || '',
     improvedEssay: analysis.improvedEssay || '',
+    modelEssay: analysis.modelEssay ? buildModelEssayViewModel(analysis.modelEssay) : null,
     scoreDimensions: normalizeScoreDimensions(analysis.scoreDimensions),
-    sentenceDiagnostics: Array.isArray(analysis.sentenceDiagnostics)
-      ? analysis.sentenceDiagnostics
-        .map((item) => ({
-          original: item && item.original ? String(item.original) : '',
-          diagnosis: item && item.diagnosis ? String(item.diagnosis) : '',
-          revision: item && item.revision ? String(item.revision) : ''
-        }))
-        .filter((item) => item.original || item.diagnosis || item.revision)
-      : [],
+    sentenceDiagnostics: normalizeSentenceDiagnostics(analysis.sentenceDiagnostics),
     weaknessProfile: analysis.weaknessProfile
       ? {
           headline: analysis.weaknessProfile.headline || '',
@@ -166,6 +160,36 @@ function normalizeGradeAnalysis(analysis) {
         }
       : null
   };
+}
+
+function normalizeSentenceDiagnostics(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item) => {
+      const normalized = {
+        original: item && item.original ? String(item.original) : '',
+        diagnosis: item && item.diagnosis ? String(item.diagnosis) : '',
+        revision: item && item.revision ? String(item.revision) : ''
+      };
+      if (hasOwn(item, 'kind')) {
+        normalized.kind = String(item.kind || '').trim();
+      }
+      if (hasOwn(item, 'errorType')) {
+        normalized.errorType = String(item.errorType || '').trim();
+      }
+      if (hasOwn(item, 'legacyInferred')) {
+        normalized.legacyInferred = Boolean(item.legacyInferred);
+      }
+      return normalized;
+    })
+    .filter((item) => item.original || item.diagnosis || item.revision);
+}
+
+function hasOwn(value, key) {
+  return Boolean(value) && Object.prototype.hasOwnProperty.call(value, key);
 }
 
 function normalizeStringArray(value) {

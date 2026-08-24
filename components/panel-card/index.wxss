@@ -1,6 +1,6 @@
 .panel-card {
-  background: var(--surface);
-  border: 2rpx solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
+  background: var(--surface, #FFFFFF);
+  border: 2rpx solid var(--border, #DEEAE5);
+  border-radius: var(--radius, 28rpx);
+  box-shadow: var(--shadow-sm, none);
 }

@@ -3,16 +3,14 @@
     <view class="brand">
       <view class="brand-logo">📘</view>
       <text class="brand-title">高考英语作文助手</text>
-      <text class="brand-sub">微信登录后即可同步你的批改记录与会员权益</text>
+      <text class="page-purpose">登录后可以同步批改记录、免费次数和会员权益。</text>
     </view>
 
     <view class="auth-card surface-card">
       <block wx:if="{{!loggedIn}}">
         <text class="auth-title">微信一键登录</text>
         <text class="auth-desc">使用微信账号安全登录，不会获取你的昵称和头像。</text>
-        <button class="wx-login-btn" loading="{{logging}}" bindtap="handleWechatLogin">
-          <text class="wx-icon">微</text>微信一键登录
-        </button>
+        <view class="initial-action"><button class="primary-btn wx-login-btn" loading="{{logging}}" bindtap="handleWechatLogin"><text class="wx-icon">微</text>微信一键登录</button></view>
         <text class="auth-tip">登录即表示同意《用户协议》与《隐私政策》</text>
       </block>
 
@@ -33,8 +31,62 @@
           <text class="info-label">登录有效期至</text>
           <text class="info-value num">{{expiresAtText}}</text>
         </view>
-        <button class="logout-btn ghost-btn" bindtap="handleLogout">退出登录</button>
+        <view class="initial-action"><button class="primary-btn account-plans-btn" bindtap="openMembershipPlans">管理会员与套餐</button></view>
+        <button class="logout-btn text-btn" bindtap="handleLogout">退出登录</button>
       </block>
+    </view>
+
+    <view id="membership-plans" class="membership-card surface-card" wx:if="{{loggedIn}}">
+      <text class="membership-title">会员与使用次数</text>
+      <text class="membership-desc">使用额度、广告奖励和会员权益以当前账号状态为准。</text>
+
+      <view class="usage-step">
+        <text class="step-index">1</text>
+        <view>
+          <text class="step-title">{{quotaExplainer.quotaTitle}}</text>
+          <text class="step-desc">{{quotaExplainer.quotaDescription}}</text>
+        </view>
+      </view>
+      <view class="usage-step">
+        <text class="step-index">2</text>
+        <view>
+          <text class="step-title">{{quotaExplainer.adTitle}}</text>
+          <text class="step-desc">{{quotaExplainer.adDescription}}</text>
+        </view>
+      </view>
+      <view class="usage-step">
+        <text class="step-index">3</text>
+        <view>
+          <text class="step-title">需要更多次数再开通会员</text>
+          <text class="step-desc">会员期间享不限次生成与严格批改。</text>
+        </view>
+      </view>
+
+      <view class="membership-state" wx:if="{{entitlement.subscriptionActive}}">
+        <text class="membership-state-title">{{entitlement.subscriptionPlanName}}</text>
+        <text class="membership-state-text" wx:if="{{entitlement.subscriptionPlanCode === 'founder_lifetime'}}">终身不限量</text>
+        <text class="membership-state-text" wx:elif="{{entitlement.subscriptionExpiresAt}}">有效期至 {{entitlement.subscriptionExpiresAt}}</text>
+      </view>
+
+      <view class="plan-list" wx:if="{{membershipPlans.length}}">
+        <view class="plan-card {{item.toneClass}}" wx:for="{{membershipPlans}}" wx:key="planCode">
+          <view class="plan-head">
+            <text class="plan-name">{{item.planName}}</text>
+            <text class="plan-badge">{{item.badgeLabel}}</text>
+          </view>
+          <text class="plan-price">{{item.priceText}}</text>
+          <text class="plan-desc">{{item.helperText}}</text>
+          <button class="plan-btn" disabled="{{item.actionDisabled}}" data-plan-code="{{item.planCode}}" bindtap="handlePlanPurchase">{{item.actionLabel}}</button>
+        </view>
+      </view>
+      <text class="membership-error" wx:if="{{membershipError}}">{{membershipError}}</text>
+      <text class="fair-use">公平使用说明：会员用于个人备考；异常高频、批量或共享账号使用可能触发风控限制。</text>
+    </view>
+
+    <view class="danger-card surface-card" wx:if="{{loggedIn}}">
+      <text class="danger-title">账户与数据</text>
+      <text class="danger-desc">注销后将永久删除作文、报告、使用次数和会员状态。</text>
+      <button class="delete-account-btn text-btn" loading="{{deletingAccount}}" bindtap="handleDeleteAccount">注销账户</button>
     </view>
   </view>
 </view>

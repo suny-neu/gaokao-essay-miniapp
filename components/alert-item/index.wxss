@@ -1,10 +1,10 @@
 .alert-item {
   display: flex;
   overflow: hidden;
-  background: var(--surface);
-  border: 2rpx solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-sm);
+  background: var(--surface, #FFFFFF);
+  border: 2rpx solid var(--border, #DEEAE5);
+  border-radius: var(--radius, 28rpx);
+  box-shadow: var(--shadow-sm, none);
 }
 
 .alert-accent {
@@ -13,11 +13,12 @@
 }
 
 .tone-amber .alert-accent {
-  background: linear-gradient(180deg, #fbbf24 0%, #f59e0b 100%);
+  background: var(--warn, #8A4700);
 }
 
-.tone-violet .alert-accent {
-  background: linear-gradient(180deg, #7c3aed 0%, #4f46e5 100%);
+.tone-violet .alert-accent,
+.tone-info .alert-accent {
+  background: var(--info, #28559B);
 }
 
 .alert-main {
@@ -37,11 +38,12 @@
   font-size: 21rpx;
   font-weight: 700;
   color: #ffffff;
-  background: #f59e0b;
+  background: var(--warn, #8A4700);
 }
 
-.tone-violet .alert-badge {
-  background: #7c3aed;
+.tone-violet .alert-badge,
+.tone-info .alert-badge {
+  background: var(--info, #28559B);
 }
 
 .alert-title {
@@ -49,7 +51,7 @@
   min-width: 0;
   font-size: 25rpx;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text, #172B25);
 }
 
 .alert-subtitle {
@@ -57,5 +59,5 @@
   margin-top: 10rpx;
   font-size: 25rpx;
   line-height: 1.6;
-  color: var(--muted);
+  color: var(--muted, #52665F);
 }

@@ -1,3 +1,4 @@
 <view class="compat-page">
-  <text class="compat-text">正在跳转到新报告...</text>
+  <text class="page-purpose">正在为你打开本次练习的反馈，请稍候。</text>
+  <view class="initial-action"><text class="compat-text">正在跳转到新报告...</text></view>
 </view>

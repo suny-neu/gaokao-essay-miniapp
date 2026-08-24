@@ -1,28 +1,38 @@
 <view class="write-page">
   <view class="write-shell">
+    <view class="page-intro">
+      <text class="section-heading">写一篇，再拿到可执行的修改建议</text>
+      <text class="page-purpose">按题目写作，拍照也能录入；提交后会告诉你先改哪里。</text>
+    </view>
+    <view class="write-steps" aria-label="写作四步">
+      <text class="step-chip">1 选题型</text><text class="step-chip">2 录入题目</text><text class="step-chip">3 写作文</text><text class="step-chip">4 提交批改</text>
+    </view>
     <view class="type-switch">
       <view class="type-chip {{essayType === 'application' ? 'type-chip-on' : ''}}" data-type="application" bindtap="chooseEssayType">应用文</view>
       <view class="type-chip {{essayType === 'continuation' ? 'type-chip-on' : ''}}" data-type="continuation" bindtap="chooseEssayType">读后续写</view>
     </view>
 
     <panel-card wx:if="{{essayType === 'application'}}" extraClass="topic-card">
-      <view class="tag tag-type">{{taskTag}}</view>
+      <view class="section-head">
+        <view>
+          <view class="tag tag-type">{{taskTag}}</view>
+          <text class="field-label section-label">题目材料</text>
+        </view>
+        <button
+          class="section-action question-ocr-action"
+          loading="{{questionOcrLoading}}"
+          disabled="{{questionOcrLoading || ocrLoading || loading}}"
+          bindtap="chooseQuestionImageAndOcr"
+        >拍照识题</button>
+      </view>
       <textarea
         class="topic-input essay-font"
         value="{{promptText}}"
         bindinput="handlePromptInput"
         auto-height
         maxlength="-1"
-        placeholder="请输入题目，或点击下方按钮拍照识别题目"
+        placeholder="请输入或粘贴作文题目"
       ></textarea>
-      <button
-        class="write-btn write-btn-secondary question-ocr-btn"
-        loading="{{questionOcrLoading}}"
-        disabled="{{questionOcrLoading || ocrLoading || loading}}"
-        bindtap="chooseQuestionImageAndOcr"
-      >
-        📷 拍照识别题目
-      </button>
       <view class="req-row">
         <text wx:for="{{requirements}}" wx:key="*this" class="req-item">• {{item}}</text>
       </view>
@@ -34,11 +44,19 @@
           <view class="tag tag-type">{{taskTag}}</view>
           <text class="field-label">题目材料</text>
         </view>
-        <button
-          wx:if="{{!editingContinuationQuestion}}"
-          class="text-action"
-          bindtap="startEditingContinuationQuestion"
-        >编辑题目</button>
+        <view class="question-actions">
+          <button
+            class="section-action question-ocr-action"
+            loading="{{questionOcrLoading}}"
+            disabled="{{questionOcrLoading || ocrLoading || loading}}"
+            bindtap="chooseQuestionImageAndOcr"
+          >拍照识题</button>
+          <button
+            wx:if="{{!editingContinuationQuestion}}"
+            class="text-action"
+            bindtap="startEditingContinuationQuestion"
+          >编辑</button>
+        </view>
       </view>
 
       <view wx:if="{{editingContinuationQuestion}}">
@@ -74,12 +92,6 @@
           ></textarea>
         </view>
 
-        <button
-          class="write-btn write-btn-secondary question-ocr-btn"
-          loading="{{questionOcrLoading}}"
-          disabled="{{questionOcrLoading || ocrLoading || loading}}"
-          bindtap="chooseQuestionImageAndOcr"
-        >📷 拍照识别题目</button>
         <button class="text-action complete-question-action" bindtap="finishEditingContinuationQuestion">完成题目录入</button>
       </view>
 
@@ -111,15 +123,15 @@
       </view>
     </view>
 
-    <text class="field-label draft-label">{{essayType === 'continuation' ? '我的续写' : '我的作文'}}</text>
-    <button
-      class="write-btn write-btn-secondary ocr-btn"
-      loading="{{ocrLoading}}"
-      disabled="{{ocrLoading || questionOcrLoading || loading}}"
-      bindtap="chooseImageAndOcr"
-    >
-      📷 {{essayType === 'continuation' ? '拍照识别续写' : '拍照识别作文'}}
-    </button>
+    <view class="draft-head">
+      <text class="field-label draft-label">{{essayType === 'continuation' ? '我的续写' : '我的作文'}}</text>
+      <button
+        class="section-action draft-ocr-action"
+        loading="{{ocrLoading}}"
+        disabled="{{ocrLoading || questionOcrLoading || loading}}"
+        bindtap="chooseImageAndOcr"
+      >拍照录入</button>
+    </view>
 
     <panel-card extraClass="draft-card">
       <textarea
@@ -140,9 +152,9 @@
       <text class="submit-status-text">{{submitStatus}}</text>
     </view>
 
-    <view class="action-stack">
-      <button class="write-btn write-btn-primary" loading="{{loading}}" disabled="{{loading}}" bindtap="goFormalEditor">提交批改</button>
-      <button class="write-btn write-btn-secondary" bindtap="goTutor">先去 AI 陪练</button>
+    <view class="action-stack initial-action">
+      <button class="primary-btn write-btn" loading="{{loading}}" disabled="{{loading}}" bindtap="goFormalEditor">提交批改</button>
+      <button class="text-action tutor-link" bindtap="goTutor">暂时不会写？先去 AI 陪练</button>
     </view>
   </view>
 </view>

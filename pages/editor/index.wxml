@@ -1,3 +1,4 @@
 <view class="compat-page">
-  <text class="compat-text">正在跳转到新页面...</text>
+  <text class="page-purpose">正在为你打开写作页，请稍候。</text>
+  <view class="initial-action"><text class="compat-text">正在跳转到新页面...</text></view>
 </view>

@@ -3,8 +3,9 @@
     <view class="stack">
       <view class="hero-card">
         <text class="eyebrow">历史记录</text>
-        <text class="hero-title">按模式、题型、状态筛选</text>
-        <text class="hero-text">云端记录和本地缓存会一起展示，点开即可回看结果。</text>
+        <text class="hero-title">回看每次练习</text>
+        <text class="page-purpose">按题型和状态找到一篇记录，打开后继续修改或复盘。</text>
+        <view class="initial-action"><button class="primary-btn history-start" bindtap="goWrite">开始一次练习</button></view>
       </view>
 
       <view class="section-card">
@@ -39,6 +40,7 @@
       <view wx:elif="{{!history.length && !loading}}" class="section-card empty-box">
         <text class="section-title">还没有历史记录</text>
         <text class="empty-text">先做一次陪练或批改，结果就会出现在这里。</text>
+        <button class="empty-action" bindtap="goWrite">去写第一篇作文</button>
       </view>
 
       <view wx:if="{{history.length}}" class="history-list">
