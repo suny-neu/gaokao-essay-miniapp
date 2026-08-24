@@ -36,3 +36,15 @@ test('model essay entry card has a clear restrained typography hierarchy', () =>
   assert.match(wxss, /\.model-essay-entry-copy\s*\{[^}]*font-size:\s*22rpx[^}]*line-height:\s*1\.65/s);
   assert.match(wxss, /\.model-essay-generate\s*\{[^}]*font-size:\s*24rpx[^}]*background:\s*var\(--ink\)/s);
 });
+
+test('generated model essay uses colored learning sections instead of continuous black text', () => {
+  const wxss = read('pages/report/index.wxss');
+
+  assert.match(wxss, /\.model-essay-content-card\s*\{[^}]*background:\s*#F8FBF9/s);
+  assert.match(wxss, /\.learning-block\s*\{[^}]*background:\s*var\(--surface\)/s);
+  assert.match(wxss, /\.learning-title\s*\{[^}]*color:\s*var\(--accent-text\)/s);
+  assert.match(wxss, /\.insight-title\s*\{[^}]*color:\s*var\(--info\)/s);
+  assert.match(wxss, /\.comparison-original\s*\{[^}]*background:\s*var\(--warn-soft\)/s);
+  assert.match(wxss, /\.comparison-recommended\s*\{[^}]*background:\s*var\(--good-soft\)/s);
+  assert.match(wxss, /\.reusable-expression\s*\{[^}]*color:\s*var\(--info\)/s);
+});
