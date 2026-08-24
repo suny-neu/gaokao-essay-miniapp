@@ -62,8 +62,8 @@ test('missing or failed entitlement never invents available daily credits', () =
   assert.deepEqual(
     JSON.parse(JSON.stringify(buildDailyQuotaView(null, 'pending'))),
     {
-      dailyQuotaText: '正在获取今日额度',
-      dailyActionText: '额度获取中',
+      dailyQuotaText: '正在获取今日额度…',
+      dailyActionText: '开始今天练习',
       dailyQuotaEmpty: false,
       dailyQuotaActionEnabled: false,
       dailyQuotaActionKind: 'none'

@@ -27,7 +27,7 @@ Page({
     growthMetric: 'score',
     growthEssayTypeTabs: [],
     growthMetricTabs: [],
-    dailyTask: null,
+    dailyTask: buildDefaultDailyTask(),
     weekSummary: { headline: '', improved: [], declined: [] },
     growthTrendPoints: [],
     growthTrendSegments: [],
@@ -38,8 +38,8 @@ Page({
     streakMetric: { value: '0', unit: '天', helper: '开始第一次练习', tone: 'neutral' },
     capabilityMetrics: [],
     priorityItems: [],
-    dailyQuotaText: '正在获取今日额度',
-    dailyActionText: '额度获取中',
+    dailyQuotaText: '正在获取今日额度…',
+    dailyActionText: '开始今天练习',
     dailyQuotaEmpty: false,
     dailyQuotaActionEnabled: false,
     dailyQuotaActionKind: 'none',
@@ -62,6 +62,7 @@ Page({
       loading: true,
       loadError: '',
       entitlement: null,
+      dailyTask: this.data.dailyTask || buildDefaultDailyTask(),
       ...buildDailyQuotaView(null, 'pending')
     });
 
@@ -464,8 +465,8 @@ function buildDashboardViewModel({ profile, entitlement, health, history, gradeH
 function buildDailyQuotaView(entitlement, entitlementStatus = 'fulfilled', adAvailable = false) {
   if (entitlementStatus === 'pending') {
     return {
-      dailyQuotaText: '正在获取今日额度',
-      dailyActionText: '额度获取中',
+      dailyQuotaText: '正在获取今日额度…',
+      dailyActionText: '开始今天练习',
       dailyQuotaEmpty: false,
       dailyQuotaActionEnabled: false,
       dailyQuotaActionKind: 'none'
@@ -526,6 +527,17 @@ function buildDailyQuotaView(entitlement, entitlementStatus = 'fulfilled', adAva
     dailyQuotaEmpty: false,
     dailyQuotaActionEnabled: false,
     dailyQuotaActionKind: 'none'
+  };
+}
+
+function buildDefaultDailyTask() {
+  return {
+    code: 'foundation',
+    title: '完成一篇应用文批改',
+    reason: '重点练习：内容完整与表达准确',
+    essayType: 'application',
+    route: '/pages/write/index?mode=grade&type=application',
+    minutes: 10
   };
 }
 

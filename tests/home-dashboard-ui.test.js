@@ -60,6 +60,16 @@ test('home dashboard follows the airy reference hierarchy', () => {
   assert.doesNotMatch(wxml, />微信登录</);
 });
 
+test('home task card keeps its complete content while quota is loading', () => {
+  const pageScript = read('pages/home/index.js');
+  const wxss = read('pages/home/index.wxss');
+
+  assert.match(pageScript, /dailyTask:\s*buildDefaultDailyTask\(\)/);
+  assert.match(pageScript, /dailyActionText:\s*'开始今天练习'/);
+  assert.match(pageScript, /dailyQuotaText:\s*'正在获取今日额度…'/);
+  assert.match(wxss, /\.task-primary\[disabled\][^}]*background:\s*var\(--ink\)/s);
+});
+
 test('home dashboard has one authoritative responsive style pass', () => {
   const wxss = read('pages/home/index.wxss');
   const shellDeclarations = wxss.match(/(?:^|\n)\.dashboard-shell\s*\{/g) || [];

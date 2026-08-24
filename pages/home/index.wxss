@@ -101,7 +101,7 @@
   min-height: 410rpx;
   overflow: hidden;
   border-color: rgba(18, 168, 117, 0.19);
-  background: linear-gradient(135deg, #ECFAF4 0%, #F7FCF9 56%, #EAF8F2 100%);
+  background: linear-gradient(135deg, #EAF9F3 0%, #F8FCFA 52%, #E8F7F1 100%);
   box-shadow: 0 12rpx 30rpx rgba(30, 90, 68, 0.075);
 }
 
@@ -150,13 +150,13 @@
 .task-copy {
   position: relative;
   z-index: 2;
-  max-width: 62%;
+  max-width: 60%;
 }
 
 .task-title {
   display: block;
   color: var(--ink);
-  font-size: 34rpx;
+  font-size: 36rpx;
   font-weight: 760;
   line-height: 1.35;
 }
@@ -165,16 +165,16 @@
   display: block;
   margin-top: 14rpx;
   color: #59615D;
-  font-size: 23rpx;
+  font-size: 24rpx;
   line-height: 1.55;
 }
 
 .task-visual {
   position: absolute;
-  right: -10rpx;
-  top: 0;
-  width: 250rpx;
-  height: 202rpx;
+  right: -6rpx;
+  top: -8rpx;
+  width: 262rpx;
+  height: 214rpx;
   transform: rotate(4deg);
 }
 
@@ -304,8 +304,9 @@
 }
 
 .task-primary[disabled] {
-  color: rgba(255, 255, 255, 0.75);
-  background: #6F7471;
+  color: rgba(255, 255, 255, 0.9);
+  background: var(--ink);
+  opacity: 0.82;
 }
 
 .task-quota {
