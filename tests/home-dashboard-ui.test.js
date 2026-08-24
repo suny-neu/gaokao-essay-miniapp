@@ -61,13 +61,19 @@ test('home dashboard follows the airy reference hierarchy', () => {
 });
 
 test('home task card keeps its complete content while quota is loading', () => {
+  const wxml = read('pages/home/index.wxml');
   const pageScript = read('pages/home/index.js');
   const wxss = read('pages/home/index.wxss');
 
+  assert.match(wxml, /<view class="task-card">/);
+  assert.doesNotMatch(wxml, /<panel-card extraClass="task-card">/);
   assert.match(pageScript, /dailyTask:\s*buildDefaultDailyTask\(\)/);
   assert.match(pageScript, /dailyActionText:\s*'开始今天练习'/);
   assert.match(pageScript, /dailyQuotaText:\s*'正在获取今日额度…'/);
   assert.match(wxss, /\.task-primary\[disabled\][^}]*background:\s*var\(--ink\)/s);
+  assert.match(wxss, /\.task-card\s*\{[^}]*min-height:\s*370rpx[^}]*border-radius:\s*30rpx[^}]*background:\s*#EAF7F1/s);
+  assert.match(wxss, /\.task-title\s*\{[^}]*font-size:\s*38rpx/s);
+  assert.match(wxss, /\.task-primary\s*\{[^}]*width:\s*56%[^}]*height:\s*68rpx/s);
 });
 
 test('home dashboard has one authoritative responsive style pass', () => {
@@ -76,7 +82,7 @@ test('home dashboard has one authoritative responsive style pass', () => {
 
   assert.equal(shellDeclarations.length, 1);
   assert.match(wxss, /\.dashboard-shell\s*\{[^}]*env\(safe-area-inset-top\)/s);
-  assert.match(wxss, /\.task-card\s*\{[^}]*min-height:\s*410rpx/s);
+  assert.match(wxss, /\.task-card\s*\{[^}]*min-height:\s*370rpx/s);
   assert.match(wxss, /\.dashboard-chart\s*\{[^}]*height:\s*236rpx/s);
   assert.doesNotMatch(wxss, /Reference layout refinement|Exact mobile proportion pass/);
 });

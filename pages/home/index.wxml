@@ -12,7 +12,7 @@
         </view>
       </view>
 
-      <panel-card extraClass="task-card">
+      <view class="task-card">
         <view class="task-head">
           <view class="task-eyebrow">
             <view class="target-icon"><view class="target-dot"></view></view>
@@ -43,7 +43,7 @@
           <button class="primary-btn task-primary" disabled="{{!dailyQuotaActionEnabled}}" bindtap="handleDailyPrimaryAction">{{dailyActionText}}</button>
         </view>
         <text class="task-quota">{{dailyQuotaText}}</text>
-      </panel-card>
+      </view>
 
       <view class="metric-grid">
         <panel-card extraClass="summary-metric-card">

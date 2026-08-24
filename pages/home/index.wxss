@@ -98,11 +98,13 @@
 
 .task-card {
   position: relative;
-  min-height: 410rpx;
+  min-height: 370rpx;
   overflow: hidden;
-  border-color: rgba(18, 168, 117, 0.19);
-  background: linear-gradient(135deg, #EAF9F3 0%, #F8FCFA 52%, #E8F7F1 100%);
-  box-shadow: 0 12rpx 30rpx rgba(30, 90, 68, 0.075);
+  border: 1rpx solid #CDE8DB;
+  border-radius: 30rpx;
+  background: #EAF7F1;
+  box-shadow: 0 12rpx 30rpx rgba(30, 90, 68, 0.08);
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
 }
 
 .task-head,
@@ -119,7 +121,7 @@
   align-items: center;
   gap: 10rpx;
   color: var(--accent-text);
-  font-size: 23rpx;
+  font-size: 24rpx;
   font-weight: 700;
 }
 
@@ -142,28 +144,29 @@
 
 .task-body {
   position: relative;
-  min-height: 184rpx;
+  min-height: 142rpx;
   align-items: flex-start;
-  padding-top: 30rpx;
+  padding-top: 24rpx;
 }
 
 .task-copy {
   position: relative;
   z-index: 2;
-  max-width: 60%;
+  max-width: 61%;
 }
 
 .task-title {
   display: block;
   color: var(--ink);
-  font-size: 36rpx;
-  font-weight: 760;
-  line-height: 1.35;
+  font-size: 38rpx;
+  font-weight: 750;
+  line-height: 1.28;
+  letter-spacing: -1rpx;
 }
 
 .task-reason {
   display: block;
-  margin-top: 14rpx;
+  margin-top: 12rpx;
   color: #59615D;
   font-size: 24rpx;
   line-height: 1.55;
@@ -171,10 +174,10 @@
 
 .task-visual {
   position: absolute;
-  right: -6rpx;
-  top: -8rpx;
-  width: 262rpx;
-  height: 214rpx;
+  right: -2rpx;
+  top: -12rpx;
+  width: 254rpx;
+  height: 206rpx;
   transform: rotate(4deg);
 }
 
@@ -285,10 +288,10 @@
 }
 
 .task-primary {
-  width: 54%;
+  width: 56%;
   min-width: 330rpx;
-  height: 70rpx;
-  margin: 24rpx auto 0;
+  height: 68rpx;
+  margin: 14rpx auto 0;
   padding: 0 32rpx;
   display: flex;
   align-items: center;
@@ -296,7 +299,7 @@
   border-radius: 999rpx;
   color: #FFFFFF;
   background: var(--ink);
-  font-size: 25rpx;
+  font-size: 26rpx;
   font-weight: 700;
   line-height: 1;
   text-align: center;
@@ -304,14 +307,14 @@
 }
 
 .task-primary[disabled] {
-  color: rgba(255, 255, 255, 0.9);
+  color: #FFFFFF;
   background: var(--ink);
-  opacity: 0.82;
+  opacity: 1;
 }
 
 .task-quota {
   display: block;
-  margin-top: 14rpx;
+  margin-top: 10rpx;
   color: #59615D;
   font-size: 21rpx;
   text-align: center;
