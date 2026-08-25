@@ -23,6 +23,8 @@ Page({
     nextPractice: '',
     legacyNotice: false,
     coachBlocks: [],
+    submission: buildSubmissionContext(),
+    originalExpanded: false,
     rawContent: '',
     fallbackTitle: '还没有批改报告',
     modelEssayAvailable: false,
@@ -46,6 +48,7 @@ Page({
     });
     const isCoach = viewModel.mode === 'coach';
     const modelEssay = buildModelEssayViewModel(analysis && analysis.modelEssay);
+    const submission = buildSubmissionContext(result);
     this.currentResult = {
       ...result,
       analysis
@@ -69,11 +72,22 @@ Page({
       nextPractice: viewModel.nextPractice,
       legacyNotice: viewModel.legacyNotice,
       coachBlocks: buildCoachBlocks(result),
+      submission,
+      originalExpanded: false,
       rawContent: String(result.content || '').trim(),
       fallbackTitle: isCoach ? '还没有陪练记录' : '还没有批改报告',
       modelEssayAvailable: canGenerateModelEssay(this.currentResult),
       modelEssayReady: Boolean(modelEssay.modelEssay),
       modelEssay
+    });
+  },
+
+  toggleOriginalText() {
+    if (!this.data.submission.hasOriginal || !this.data.submission.showOriginalToggle) {
+      return;
+    }
+    this.setData({
+      originalExpanded: !this.data.originalExpanded
     });
   },
 
@@ -176,6 +190,29 @@ function buildCoachBlocks(result) {
   pushCoachBlock(blocks, '原因说明', coachPlan.routeReason || '');
 
   return blocks;
+}
+
+function buildSubmissionContext(result = {}) {
+  const promptSnapshot = result.promptSnapshot || {};
+  const question = String(promptSnapshot.taskContent || promptSnapshot.sourceMaterial || '').trim();
+  const originalText = String(promptSnapshot.draftText || '').trim();
+  const previewLimit = 180;
+  const originalPreview = originalText.length > previewLimit
+    ? `${originalText.slice(0, previewLimit).trim()}…`
+    : originalText;
+  const wordCount = Number(result.wordCount || 0);
+
+  return {
+    visible: Boolean(question || originalText),
+    typeLabel: String(result.essayTypeLabel || (result.essayType === 'continuation' ? '读后续写' : '应用文')),
+    questionLabel: promptSnapshot.taskContent ? '题目' : '原文材料',
+    question,
+    hasOriginal: Boolean(originalText),
+    originalText,
+    originalPreview,
+    showOriginalToggle: originalText.length > previewLimit,
+    wordCountText: wordCount > 0 ? `${wordCount} 词` : ''
+  };
 }
 
 function pushCoachBlock(blocks, label, text) {

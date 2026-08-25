@@ -4,6 +4,25 @@
     <text class="page-purpose">先看最该改的一点，再按分类修改，下一次会更有方向。</text>
   </view>
   <view class="report-shell" wx:if="{{ready}}">
+    <panel-card wx:if="{{mode === 'grade' && submission.visible}}" extraClass="submission-card">
+      <view class="submission-head">
+        <text class="submission-title">本次批改内容</text>
+        <text class="submission-type">{{submission.typeLabel}}</text>
+      </view>
+      <view wx:if="{{submission.question}}" class="submission-block">
+        <text class="submission-label">{{submission.questionLabel}}</text>
+        <text class="submission-text">{{submission.question}}</text>
+      </view>
+      <view wx:if="{{submission.hasOriginal}}" class="submission-block submission-original-block">
+        <view class="submission-original-head">
+          <text class="submission-label">我的原文</text>
+          <text wx:if="{{submission.wordCountText}}" class="submission-word-count">{{submission.wordCountText}}</text>
+        </view>
+        <text class="submission-text essay-font">{{originalExpanded ? submission.originalText : submission.originalPreview}}</text>
+        <button wx:if="{{submission.showOriginalToggle}}" class="submission-toggle" bindtap="toggleOriginalText">{{originalExpanded ? '收起原文' : '查看全文'}}</button>
+      </view>
+    </panel-card>
+
     <panel-card wx:if="{{scoreVisible}}" extraClass="summary-card">
       <view class="summary-head">
         <text class="summary-label">总评</text>

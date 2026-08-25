@@ -18,6 +18,16 @@ test('strict grading report owns the model essay generation flow', () => {
   assert.match(wxml, /生成同题高分范文/);
 });
 
+test('strict grading report shows the submitted question and collapsible original essay', () => {
+  const js = read('pages/report/index.js');
+  const wxml = read('pages/report/index.wxml');
+
+  assert.match(js, /toggleOriginalText/);
+  assert.match(wxml, /本次批改内容/);
+  assert.match(wxml, /我的原文/);
+  assert.match(wxml, /查看全文/);
+});
+
 test('model essay learning card contains all four learning sections', () => {
   const wxml = read('pages/report/index.wxml');
 

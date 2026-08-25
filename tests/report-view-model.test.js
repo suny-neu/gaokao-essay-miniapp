@@ -9,7 +9,7 @@ const {
 } = require('../utils/report-view-model');
 const { normalizeGradeAnalysis } = require('../utils/storage');
 
-function loadBuildCoachBlocks() {
+function loadReportHelpers() {
   const source = fs.readFileSync(path.join(__dirname, '../pages/report/index.js'), 'utf8');
   const pageDirectory = path.join(__dirname, '../pages/report');
   const sandbox = {
@@ -18,8 +18,8 @@ function loadBuildCoachBlocks() {
     Page: () => {}
   };
 
-  vm.runInNewContext(`${source}\nmodule.exports = { buildCoachBlocks };`, sandbox);
-  return sandbox.module.exports.buildCoachBlocks;
+  vm.runInNewContext(`${source}\nmodule.exports = { buildCoachBlocks, buildSubmissionContext };`, sandbox);
+  return sandbox.module.exports;
 }
 
 function loadNormalizeRequestGradeAnalysis() {
@@ -276,7 +276,7 @@ test('远端响应标准化保留逐句诊断的分类字段', () => {
 });
 
 test('句子纠错报告将 sentence_correction 展示为检查错误', () => {
-  const buildCoachBlocks = loadBuildCoachBlocks();
+  const { buildCoachBlocks } = loadReportHelpers();
 
   const blocks = buildCoachBlocks({
     mode: 'coach',
@@ -286,4 +286,26 @@ test('句子纠错报告将 sentence_correction 展示为检查错误', () => {
   assert.equal(blocks.length, 1);
   assert.equal(blocks[0].label, '训练方式');
   assert.equal(blocks[0].text, '检查错误');
+});
+
+test('批改报告保留题目与可展开查看的原文', () => {
+  const { buildSubmissionContext } = loadReportHelpers();
+  const originalText = 'Dear Peter,\nI joined a robotics workshop and learned how to work with my classmates.\nIt was meaningful and exciting.';
+
+  const submission = buildSubmissionContext({
+    mode: 'grade',
+    essayType: 'application',
+    essayTypeLabel: '应用文',
+    wordCount: 21,
+    promptSnapshot: {
+      taskContent: '请写信介绍你参加过的一项科技创新活动。',
+      draftText: originalText
+    }
+  });
+
+  assert.equal(submission.typeLabel, '应用文');
+  assert.equal(submission.question, '请写信介绍你参加过的一项科技创新活动。');
+  assert.equal(submission.originalText, originalText);
+  assert.match(submission.originalPreview, /Dear Peter/);
+  assert.equal(submission.wordCountText, '21 词');
 });
