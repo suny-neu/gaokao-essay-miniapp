@@ -60,7 +60,8 @@ function resolveTaskRequestError(error) {
   const code = String((error && error.code) || '').trim();
   const knownMessages = {
     TRIAL_LIMIT_REACHED: '免费体验次数已用完，请观看广告或开通会员继续。',
-    TRIAL_DAILY_LIMIT_REACHED: '今天的免费批改次数已用完，明天恢复；也可以看广告继续批改。',
+    TRIAL_DAILY_LIMIT_REACHED: '今天的免费批改次数已用完，明天恢复。',
+    TRIAL_TOTAL_LIMIT_REACHED: '15天免费额度已用完，明天不会自动恢复，请开通会员继续。',
     DEVICE_DAILY_LIMIT_REACHED: '当前设备今天的批改次数已用完，明天恢复。',
     IP_DAILY_LIMIT_REACHED: '当前网络今天的批改额度已用完，明天恢复。',
     RATE_LIMITED: '操作太频繁，请等待1分钟后再试，不要连续点击。',

@@ -259,9 +259,21 @@ function buildMembershipQuotaExplainer(entitlement, status = 'fulfilled') {
   const dailyRemaining = Number(entitlement.dailyFreeRemaining);
   if (entitlement.trialPolicy === 'daily' && Number.isFinite(dailyLimit) && dailyLimit > 0 && Number.isFinite(dailyRemaining)) {
     const remaining = Math.min(Math.max(dailyRemaining, 0), dailyLimit);
+    const totalLimit = Number(entitlement.trialTotalLimit);
+    const totalRemaining = Number(entitlement.trialTotalRemaining);
+    if (Number.isFinite(totalLimit) && totalLimit > 0 && Number.isFinite(totalRemaining) && totalRemaining <= 0) {
+      return {
+        quotaTitle: '15天免费额度已用完',
+        quotaDescription: '免费体验已结束，开通会员后可以继续使用。',
+        ...ad
+      };
+    }
+    const totalDescription = Number.isFinite(totalLimit) && totalLimit > 0 && Number.isFinite(totalRemaining)
+      ? `总计还剩 ${Math.max(totalRemaining, 0)}/${totalLimit} 次。`
+      : '';
     return {
       quotaTitle: `每天 ${dailyLimit} 次免费使用`,
-      quotaDescription: `今天还可免费批改 ${remaining} 次。`,
+      quotaDescription: `今天还可免费批改 ${remaining} 次。${totalDescription}`,
       ...ad
     };
   }

@@ -23,13 +23,13 @@ test('login explains a confirmed daily allowance using backend values', () => {
   assert.deepEqual(
     JSON.parse(JSON.stringify(buildMembershipQuotaExplainer({
       trialPolicy: 'daily',
-      dailyFreeLimit: 5,
+      dailyFreeLimit: 3,
       dailyFreeRemaining: 3,
       adRewardEnabled: true,
       adRewardCredits: 1
     }, 'fulfilled'))),
     {
-      quotaTitle: '每天 5 次免费使用',
+      quotaTitle: '每天 3 次免费使用',
       quotaDescription: '今天还可免费批改 3 次。',
       adTitle: '广告奖励还剩 1 次',
       adDescription: '每天免费次数用完后，会优先使用已有奖励次数。'

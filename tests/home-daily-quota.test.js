@@ -23,12 +23,12 @@ test('confirmed daily entitlement uses the authoritative remaining and limit fie
   assert.deepEqual(
     JSON.parse(JSON.stringify(buildDailyQuotaView({
       trialPolicy: 'daily',
-      dailyFreeLimit: 5,
+      dailyFreeLimit: 3,
       dailyFreeRemaining: 3,
       trialRemaining: 1
     }, 'fulfilled'))),
     {
-      dailyQuotaText: '今日免费批改 3/5 次',
+      dailyQuotaText: '今日免费批改 3/3 次',
       dailyActionText: '开始10分钟练习',
       dailyQuotaEmpty: false,
       dailyQuotaActionEnabled: true,
@@ -87,7 +87,7 @@ test('stored ad credits are used directly after daily credits are exhausted', ()
   assert.deepEqual(
     JSON.parse(JSON.stringify(buildDailyQuotaView({
       trialPolicy: 'daily',
-      dailyFreeLimit: 5,
+      dailyFreeLimit: 3,
       dailyFreeRemaining: 0,
       adRewardCredits: 2
     }, 'fulfilled', true))),
@@ -107,7 +107,7 @@ test('only an empty free and ad balance asks the student to watch a video', () =
   assert.deepEqual(
     JSON.parse(JSON.stringify(buildDailyQuotaView({
       trialPolicy: 'daily',
-      dailyFreeLimit: 5,
+      dailyFreeLimit: 3,
       dailyFreeRemaining: 0,
       adRewardCredits: 0
     }, 'fulfilled', true))),
@@ -127,12 +127,33 @@ test('an empty balance without a usable ad offers membership instead of a video'
   assert.deepEqual(
     JSON.parse(JSON.stringify(buildDailyQuotaView({
       trialPolicy: 'daily',
-      dailyFreeLimit: 5,
+      dailyFreeLimit: 3,
       dailyFreeRemaining: 0,
       adRewardCredits: 0
     }, 'fulfilled', false))),
     {
       dailyQuotaText: '今日免费批改已用完',
+      dailyActionText: '查看会员权益',
+      dailyQuotaEmpty: true,
+      dailyQuotaActionEnabled: true,
+      dailyQuotaActionKind: 'membership'
+    }
+  );
+});
+
+test('total trial exhaustion blocks another day even when daily credits reset', () => {
+  const buildDailyQuotaView = loadBuildDailyQuotaView();
+
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(buildDailyQuotaView({
+      trialPolicy: 'daily',
+      dailyFreeLimit: 3,
+      dailyFreeRemaining: 3,
+      trialTotalLimit: 45,
+      trialTotalRemaining: 0
+    }, 'fulfilled', false))),
+    {
+      dailyQuotaText: '15天免费额度已用完',
       dailyActionText: '查看会员权益',
       dailyQuotaEmpty: true,
       dailyQuotaActionEnabled: true,

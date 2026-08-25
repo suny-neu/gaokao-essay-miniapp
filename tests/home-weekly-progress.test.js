@@ -58,7 +58,19 @@ test('本周进步不会混合应用文与读后续写分数', () => {
   );
 });
 
-test('缺少本周或上周样本时保持等待状态', () => {
+test('只有一篇正式批改时保持等待状态', () => {
+  const buildWeeklyMetric = loadWeeklyMetricBuilder();
+  const records = [
+    grade('current-1', '2026-08-24', 12)
+  ];
+
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(buildWeeklyMetric(records, 'application', new Date('2026-08-25T20:00:00+08:00')))),
+    { delta: 0, label: '等待更多记录', status: 'PENDING' }
+  );
+});
+
+test('没有上周样本时用最近两篇正式批改显示本周进步', () => {
   const buildWeeklyMetric = loadWeeklyMetricBuilder();
   const records = [
     grade('current-1', '2026-08-24', 12),
@@ -67,6 +79,6 @@ test('缺少本周或上周样本时保持等待状态', () => {
 
   assert.deepEqual(
     JSON.parse(JSON.stringify(buildWeeklyMetric(records, 'application', new Date('2026-08-25T20:00:00+08:00')))),
-    { delta: 0, label: '等待更多记录', status: 'PENDING' }
+    { delta: 1, label: '+1分', status: 'IMPROVED' }
   );
 });

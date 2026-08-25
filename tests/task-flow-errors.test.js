@@ -6,7 +6,11 @@ const { resolveTaskRequestError } = require('../utils/task-flow');
 test('quota errors explain when the allowance returns', () => {
   assert.equal(
     resolveTaskRequestError({ code: 'TRIAL_DAILY_LIMIT_REACHED' }),
-    '今天的免费批改次数已用完，明天恢复；也可以看广告继续批改。'
+    '今天的免费批改次数已用完，明天恢复。'
+  );
+  assert.equal(
+    resolveTaskRequestError({ code: 'TRIAL_TOTAL_LIMIT_REACHED' }),
+    '15天免费额度已用完，明天不会自动恢复，请开通会员继续。'
   );
   assert.equal(
     resolveTaskRequestError({ code: 'DEVICE_DAILY_LIMIT_REACHED' }),

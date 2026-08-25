@@ -497,8 +497,24 @@ function buildDailyQuotaView(entitlement, entitlementStatus = 'fulfilled', adAva
   const dailyRemaining = Number(entitlement.dailyFreeRemaining);
   if (entitlement.trialPolicy === 'daily' && Number.isFinite(dailyLimit) && dailyLimit > 0 && Number.isFinite(dailyRemaining)) {
     const remaining = Math.min(Math.max(dailyRemaining, 0), dailyLimit);
+    const totalLimit = Number(entitlement.trialTotalLimit);
+    const totalRemaining = Number(entitlement.trialTotalRemaining);
+    if (Number.isFinite(totalLimit) && totalLimit > 0 && Number.isFinite(totalRemaining) && totalRemaining <= 0) {
+      return {
+        dailyQuotaText: '15天免费额度已用完',
+        dailyActionText: '查看会员权益',
+        dailyQuotaEmpty: true,
+        dailyQuotaActionEnabled: true,
+        dailyQuotaActionKind: 'membership'
+      };
+    }
+    const totalQuotaText = Number.isFinite(totalLimit) && totalLimit > 0 && Number.isFinite(totalRemaining)
+      ? `，总计还剩 ${Math.max(totalRemaining, 0)}/${totalLimit} 次`
+      : '';
     return buildFreeQuotaView({
-      quotaText: remaining > 0 ? `今日免费批改 ${remaining}/${dailyLimit} 次` : '今日免费批改已用完',
+      quotaText: remaining > 0
+        ? `今日免费批改 ${remaining}/${dailyLimit} 次${totalQuotaText}`
+        : `今日免费批改已用完${totalQuotaText}`,
       remaining,
       actionText: '开始10分钟练习',
       adRewardCredits: entitlement.adRewardCredits,
@@ -561,15 +577,25 @@ function buildLegacyWeeklyMetric(gradeHistory = [], essayType = 'application', n
     .map((item) => item.score);
 
   if (!currentScores.length || !previousScores.length) {
+    if (scores.length >= 2) {
+      const orderedScores = scores.slice().sort((left, right) => left.createdAt - right.createdAt);
+      const previousScore = orderedScores[orderedScores.length - 2].score;
+      const latestScore = orderedScores[orderedScores.length - 1].score;
+      return formatWeeklyMetric(latestScore - previousScore);
+    }
     return { delta: 0, label: '等待更多记录', status: 'PENDING' };
   }
   const currentAverage = currentScores.reduce((sum, score) => sum + score, 0) / currentScores.length;
   const previousAverage = previousScores.reduce((sum, score) => sum + score, 0) / previousScores.length;
-  const delta = Math.round((currentAverage - previousAverage) * 10) / 10;
+  return formatWeeklyMetric(currentAverage - previousAverage);
+}
+
+function formatWeeklyMetric(rawDelta) {
+  const delta = Math.round(rawDelta * 10) / 10;
   return {
     delta,
     label: Math.abs(delta) < 0.01 ? '持平' : `${delta > 0 ? '+' : ''}${formatDecimal(delta)}分`,
-    status: delta > 0 ? 'IMPROVED' : delta < 0 ? 'DECLINED' : 'STABLE'
+    status: delta > 0.4 ? 'IMPROVED' : delta < -0.4 ? 'DECLINED' : 'STABLE'
   };
 }
 
