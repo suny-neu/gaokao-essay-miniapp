@@ -57,6 +57,20 @@ function composeSession(result, payload) {
 }
 
 function resolveTaskRequestError(error) {
+  const code = String((error && error.code) || '').trim();
+  const knownMessages = {
+    TRIAL_LIMIT_REACHED: '免费体验次数已用完，请观看广告或开通会员继续。',
+    TRIAL_DAILY_LIMIT_REACHED: '今天的免费批改次数已用完，明天恢复；也可以看广告继续批改。',
+    DEVICE_DAILY_LIMIT_REACHED: '当前设备今天的批改次数已用完，明天恢复。',
+    IP_DAILY_LIMIT_REACHED: '当前网络今天的批改额度已用完，明天恢复。',
+    RATE_LIMITED: '操作太频繁，请等待1分钟后再试，不要连续点击。',
+    AD_REWARD_DAILY_LIMIT_REACHED: '今天的广告奖励次数已用完，明天恢复。',
+    AD_REWARD_DAILY_LIMIT: '当前设备今天的广告奖励次数已用完，明天恢复。',
+    AD_REWARD_CREDIT_CAP_REACHED: '广告奖励次数已达到存储上限，请先使用已有次数。'
+  };
+  if (knownMessages[code]) {
+    return knownMessages[code];
+  }
   if (error && error.code === 'REQUEST_IN_PROGRESS') {
     return '上一条相同请求还在处理中，先别重复点。';
   }

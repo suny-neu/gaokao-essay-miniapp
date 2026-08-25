@@ -7,6 +7,8 @@ const DIMENSION_DEFINITIONS = {
 
 const ERROR_TYPE_LABELS = {
   GRAMMAR: '语法',
+  TENSE: '时态',
+  ARTICLE: '冠词',
   SPELLING: '拼写',
   WORD_CHOICE: '用词',
   PUNCTUATION: '标点',

@@ -111,6 +111,33 @@ test('报告按后端结构化 kind 区分必须修改和表达升级', () => {
   assert.equal(viewModel.legacyNotice, false);
 });
 
+test('报告显示时态和冠词的准确错误类型', () => {
+  const viewModel = buildReportViewModel({
+    mode: 'grade',
+    analysis: {
+      sentenceDiagnostics: [
+        {
+          kind: 'ERROR_CORRECTION',
+          errorType: 'TENSE',
+          original: 'She hug her mother.',
+          diagnosis: '故事叙述应使用一般过去时。',
+          revision: 'She hugged her mother.'
+        },
+        {
+          kind: 'ERROR_CORRECTION',
+          errorType: 'ARTICLE',
+          original: 'They are happy family.',
+          diagnosis: 'family 前缺少不定冠词。',
+          revision: 'They are a happy family.'
+        }
+      ]
+    }
+  });
+
+  assert.equal(viewModel.corrections[0].tag, '时态');
+  assert.equal(viewModel.corrections[1].tag, '冠词');
+});
+
 test('缺少英文原句或英文修改句的错误移入整体内容建议', () => {
   const viewModel = buildReportViewModel({
     mode: 'grade',
