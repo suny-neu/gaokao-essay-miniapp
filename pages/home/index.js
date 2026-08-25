@@ -1,4 +1,4 @@
-const { fetchStudyProfile, fetchAccountEntitlement, fetchBackendHealthStatus, fetchEssayHistoryPage, fetchEssayHistoryDetail } = require('../../utils/request');
+const { fetchDashboard, fetchStudyProfile, fetchAccountEntitlement, fetchBackendHealthStatus, fetchEssayHistoryPage, fetchEssayHistoryDetail } = require('../../utils/request');
 const { getHistory, saveHistoryItem } = require('../../utils/storage');
 const { buildStudyProfile } = require('../../utils/study-profile');
 const { buildFormalGradeMetrics } = require('../../utils/dashboard-metrics');
@@ -58,6 +58,8 @@ Page({
   },
 
   async loadDashboard() {
+    const loadId = (this.dashboardLoadId || 0) + 1;
+    this.dashboardLoadId = loadId;
     this.setData({
       loading: true,
       loadError: '',
@@ -67,6 +69,66 @@ Page({
     });
 
     const localHistory = getHistory();
+    try {
+      const aggregate = await fetchDashboard(this.data.growthEssayType);
+      if (this.dashboardLoadId !== loadId) {
+        return;
+      }
+
+      const profile = {
+        ...buildStudyProfile(localHistory),
+        growth: aggregate.growth || {}
+      };
+      this.renderDashboard({
+        profile,
+        entitlement: aggregate.entitlement || null,
+        health: null,
+        history: localHistory,
+        weekly: aggregate.weekly,
+        streak: aggregate.streak,
+        entitlementStatus: 'fulfilled'
+      });
+      this.loadDashboardDetails(loadId, localHistory, aggregate).catch(() => {});
+    } catch (error) {
+      await this.loadDashboardLegacy(loadId, localHistory);
+    }
+  },
+
+  async loadDashboardDetails(loadId, localHistory, aggregate) {
+    const [profileResult, healthResult, historyResult] = await Promise.allSettled([
+      fetchStudyProfile(this.data.growthEssayType),
+      fetchBackendHealthStatus(),
+      fetchEssayHistoryPage({
+        offset: 0,
+        limit: 12,
+        filters: {}
+      })
+    ]);
+    if (this.dashboardLoadId !== loadId) {
+      return;
+    }
+
+    const remoteHistory = historyResult.status === 'fulfilled' ? historyResult.value.items || [] : [];
+    const mergedHistory = mergeHistoryRecords(remoteHistory, localHistory)
+      .sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
+    const profile = profileResult.status === 'fulfilled'
+      ? profileResult.value
+      : {
+          ...buildStudyProfile(mergedHistory),
+          growth: aggregate.growth || {}
+        };
+    this.renderDashboard({
+      profile,
+      entitlement: aggregate.entitlement || null,
+      health: healthResult.status === 'fulfilled' ? healthResult.value : null,
+      history: mergedHistory,
+      weekly: aggregate.weekly,
+      streak: aggregate.streak,
+      entitlementStatus: 'fulfilled'
+    });
+  },
+
+  async loadDashboardLegacy(loadId, localHistory) {
     const [profileResult, entitlementResult, healthResult, historyResult] = await Promise.allSettled([
       fetchStudyProfile(this.data.growthEssayType),
       fetchAccountEntitlement(),
@@ -77,31 +139,47 @@ Page({
         filters: {}
       })
     ]);
+    if (this.dashboardLoadId !== loadId) {
+      return;
+    }
 
     const remoteHistory = historyResult.status === 'fulfilled' ? historyResult.value.items || [] : [];
     const mergedHistory = mergeHistoryRecords(remoteHistory, localHistory)
       .sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
-
     const profile = profileResult.status === 'fulfilled'
       ? profileResult.value
       : buildStudyProfile(mergedHistory);
     const entitlement = entitlementResult.status === 'fulfilled' ? entitlementResult.value : null;
+    this.renderDashboard({
+      profile,
+      entitlement,
+      health: healthResult.status === 'fulfilled' ? healthResult.value : null,
+      history: mergedHistory,
+      weekly: buildLegacyWeeklyMetric(mergedHistory, this.data.growthEssayType),
+      streak: buildLegacyStreakMetric(mergedHistory),
+      entitlementStatus: entitlementResult.status
+    });
 
-    const health = healthResult.status === 'fulfilled' ? healthResult.value : null;
-    const gradeHistory = mergedHistory.filter((item) =>
+    if (!mergedHistory.length && profileResult.status !== 'fulfilled' && historyResult.status !== 'fulfilled') {
+      this.setData({
+        loadError: '暂时没拉到远端数据，先展示本地默认首页。'
+      });
+    }
+  },
+
+  renderDashboard({ profile, entitlement, health, history, weekly, streak, entitlementStatus }) {
+    const gradeHistory = history.filter((item) =>
       item
       && item.mode === 'grade'
       && item.taskStatus !== 'FAILED'
       && parseScoreText(item.scoreText).valid
     );
     const latestGrade = gradeHistory[0] || null;
-    const weekly = buildLegacyWeeklyMetric(gradeHistory, this.data.growthEssayType);
-    const streak = buildLegacyStreakMetric(mergedHistory);
     const dashboard = buildDashboardViewModel({
       profile,
       entitlement,
       health,
-      history: mergedHistory,
+      history,
       gradeHistory
     });
     const growthProfile = normalizeGrowthProfile(profile.growth || {});
@@ -147,14 +225,8 @@ Page({
       capabilityMetrics: highlights.capabilityMetrics,
       priorityItems: highlights.priorityItems,
       entitlement,
-      ...buildDailyQuotaView(entitlement, entitlementResult.status, isAdRewardAvailable(entitlement))
+      ...buildDailyQuotaView(entitlement, entitlementStatus, isAdRewardAvailable(entitlement))
     });
-
-    if (!mergedHistory.length && profileResult.status !== 'fulfilled' && historyResult.status !== 'fulfilled') {
-      this.setData({
-        loadError: '暂时没拉到远端数据，先展示本地默认首页。'
-      });
-    }
   },
 
   async openLatestGrade() {

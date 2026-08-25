@@ -6,14 +6,13 @@ test('dashboard endpoint is configured for the account aggregate', () => {
   assert.equal(config.dashboardEndpoint, '/api/account/dashboard');
 });
 
-test('home remains compatible with the currently deployed backend', () => {
+test('home uses the account aggregate for its first screen', () => {
   const fs = require('node:fs');
   const path = require('node:path');
   const homePage = fs.readFileSync(path.join(__dirname, '../pages/home/index.js'), 'utf8');
 
-  assert.doesNotMatch(homePage, /fetchDashboard\(/);
-  assert.match(homePage, /fetchStudyProfile\(/);
-  assert.match(homePage, /fetchAccountEntitlement\(/);
+  assert.match(homePage, /fetchDashboard\(/);
+  assert.match(homePage, /loadDashboardDetails\(/);
 });
 
 test('dashboard response normalization keeps stable defaults', () => {

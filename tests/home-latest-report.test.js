@@ -11,6 +11,12 @@ function loadHomePage({ remoteItems = [], historyError = null, detail = null } =
   const app = { globalData: {} };
   let pageDefinition;
   const requestStub = {
+    fetchDashboard: async () => ({
+      entitlement: { dailyFreeLimit: 3, dailyFreeRemaining: 2, trialPolicy: 'daily' },
+      growth: {},
+      weekly: { label: '等待更多记录', status: 'PENDING' },
+      streak: { days: 0, label: '开始第一次练习' }
+    }),
     fetchStudyProfile: async () => ({}),
     fetchAccountEntitlement: async () => ({}),
     fetchBackendHealthStatus: async () => ({}),
@@ -55,7 +61,7 @@ function loadHomePage({ remoteItems = [], historyError = null, detail = null } =
 }
 
 function createPageInstance(pageDefinition) {
-  return {
+  const page = {
     data: {
       ...pageDefinition.data,
       latestGradeId: '',
@@ -65,6 +71,12 @@ function createPageInstance(pageDefinition) {
       Object.assign(this.data, patch);
     }
   };
+  Object.entries(pageDefinition).forEach(([key, value]) => {
+    if (typeof value === 'function') {
+      page[key] = value;
+    }
+  });
+  return page;
 }
 
 test('看报告会在首页历史请求失败后重新获取最新正式批改', async () => {
@@ -93,6 +105,16 @@ test('看报告会在首页历史请求失败后重新获取最新正式批改',
     [{ url: '/pages/report/index' }]
   );
   assert.equal(calls.toasts.length, 0);
+});
+
+test('首页拿到聚合数据后立即完成首屏渲染', async () => {
+  const { pageDefinition } = loadHomePage();
+  const page = createPageInstance(pageDefinition);
+
+  await pageDefinition.loadDashboard.call(page);
+
+  assert.equal(page.data.loading, false);
+  assert.equal(page.data.dailyQuotaText, '今日免费批改 2/3 次');
 });
 
 test('重新获取报告超时时显示加载失败而不是误报没有批改', async () => {
