@@ -9,6 +9,11 @@ function loadRequestModule(state) {
   const sandbox = {
     setTimeout,
     clearTimeout,
+    console: {
+      info(...args) {
+        state.logs.push(args);
+      }
+    },
     wx: {
       request(options) {
         if (options.url.endsWith('/api/auth/wx-login')) {
@@ -56,6 +61,7 @@ function loadRequestModule(state) {
           authEndpoint: '/api/auth/wx-login',
           dashboardEndpoint: '/api/account/dashboard'
         },
+        runtimeInfo: { isDevtools: Boolean(state.isDevtools) },
         getRemoteConfigIssues: () => [],
         isLocalhostUrl: () => false
       };
@@ -138,4 +144,27 @@ test('failed WeChat login stops dependent authorized requests', async () => {
   assert.equal(state.dashboardRequests, 0);
   assert.equal(results.every((result) => result.status === 'rejected'), true);
   assert.equal(results[0].reason.message, '登录服务暂时不可用');
+});
+
+test('developer tools log request timing without auth credentials', async () => {
+  const state = {
+    token: 'cached-token',
+    openId: 'cached-open-id',
+    isDevtools: true,
+    logs: [],
+    loginCodeRequests: 0,
+    authRequests: 0,
+    dashboardRequests: 0
+  };
+  const request = loadRequestModule(state);
+
+  await request.fetchDashboard('application');
+
+  assert.equal(state.logs.length, 1);
+  const [label, timing] = state.logs[0];
+  assert.equal(label, '[API timing]');
+  assert.equal(timing.path, '/api/account/dashboard?essayType=application');
+  assert.equal(timing.statusCode, 200);
+  assert.equal(Object.hasOwn(timing, 'token'), false);
+  assert.equal(Object.hasOwn(timing, 'openId'), false);
 });

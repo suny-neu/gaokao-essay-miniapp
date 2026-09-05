@@ -1,4 +1,4 @@
-const { config, getRemoteConfigIssues, isLocalhostUrl } = require('./config');
+const { config, runtimeInfo, getRemoteConfigIssues, isLocalhostUrl } = require('./config');
 const { countEnglishWords, uid } = require('./format');
 const { getAuthToken, getOpenId, getLoginCode, saveAuthSession, isAuthSessionValid, clearAuthSession } = require('./auth');
 const { normalizeScoreDimensions } = require('./report-view-model');
@@ -286,8 +286,11 @@ async function requestRemote(payload, handlers = {}, hasRetried = false) {
 }
 
 async function requestJson(path, options = {}, hasRetried = false) {
+  const startedAt = Date.now();
   assertRemoteConfigReady();
   const authContext = await prepareAuthorizedContext();
+  const authMs = Date.now() - startedAt;
+  const networkStartedAt = Date.now();
   return new Promise((resolve, reject) => {
     wx.request({
       url: `${config.apiBaseUrl}${path}`,
@@ -301,6 +304,7 @@ async function requestJson(path, options = {}, hasRetried = false) {
       data: options.data || {},
       success(res) {
         if (res.statusCode === 401 && !hasRetried) {
+          logRequestTiming(path, options.method || 'GET', res.statusCode, authMs, networkStartedAt, startedAt, 'retry');
           clearAuthSession();
           requestJson(path, options, true).then(resolve).catch(reject);
           return;
@@ -310,22 +314,42 @@ async function requestJson(path, options = {}, hasRetried = false) {
         const apiResponse = unwrapApiResponse(parsedPayload);
         if (res.statusCode >= 200 && res.statusCode < 300) {
           if (apiResponse.error) {
+            logRequestTiming(path, options.method || 'GET', res.statusCode, authMs, networkStartedAt, startedAt, apiResponse.code || 'API_ERROR');
             reject(createRequestError(apiResponse.message, apiResponse.code));
             return;
           }
           if (apiResponse.data && (apiResponse.data.token || apiResponse.data.openId)) {
             saveAuthSession(apiResponse.data);
           }
+          logRequestTiming(path, options.method || 'GET', res.statusCode, authMs, networkStartedAt, startedAt, 'ok');
           resolve(apiResponse.data);
           return;
         }
 
+        logRequestTiming(path, options.method || 'GET', res.statusCode, authMs, networkStartedAt, startedAt, apiResponse.code || 'HTTP_ERROR');
         reject(createRequestError(apiResponse.message || `请求失败：HTTP ${res.statusCode}`, apiResponse.code));
       },
       fail(err) {
+        logRequestTiming(path, options.method || 'GET', 0, authMs, networkStartedAt, startedAt, 'NETWORK_ERROR');
         reject(normalizeTransportError(err, `${config.apiBaseUrl}${path}`));
       }
     });
+  });
+}
+
+function logRequestTiming(path, method, statusCode, authMs, networkStartedAt, startedAt, result) {
+  if (!runtimeInfo || !runtimeInfo.isDevtools || typeof console === 'undefined' || typeof console.info !== 'function') {
+    return;
+  }
+  const now = Date.now();
+  console.info('[API timing]', {
+    path,
+    method,
+    statusCode,
+    authMs,
+    networkMs: now - networkStartedAt,
+    totalMs: now - startedAt,
+    result
   });
 }
 
