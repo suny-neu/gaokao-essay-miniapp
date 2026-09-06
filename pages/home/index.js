@@ -1,4 +1,5 @@
 const { fetchDashboard, fetchStudyProfile, fetchAccountEntitlement, fetchBackendHealthStatus, fetchEssayHistoryPage, fetchEssayHistoryDetail } = require('../../utils/request');
+const { config } = require('../../utils/config');
 const { getHistory, saveHistoryItem } = require('../../utils/storage');
 const { buildStudyProfile } = require('../../utils/study-profile');
 const { buildFormalGradeMetrics } = require('../../utils/dashboard-metrics');
@@ -73,11 +74,28 @@ Page({
     });
 
     const localHistory = getHistory();
+    // 先用上次成功加载的 dashboard 缓存渲染，实现"秒开"，再后台刷新最新数据
+    const cachedAggregate = readDashboardCache(this.data.growthEssayType);
+    if (cachedAggregate) {
+      this.renderDashboard({
+        profile: {
+          ...buildStudyProfile(localHistory),
+          growth: cachedAggregate.growth || {}
+        },
+        entitlement: cachedAggregate.entitlement || null,
+        health: null,
+        history: localHistory,
+        weekly: cachedAggregate.weekly,
+        streak: cachedAggregate.streak,
+        entitlementStatus: 'fulfilled'
+      });
+    }
     try {
       const aggregate = await fetchDashboard(this.data.growthEssayType);
       if (this.dashboardLoadId !== loadId) {
         return;
       }
+      writeDashboardCache(this.data.growthEssayType, aggregate);
 
       const profile = {
         ...buildStudyProfile(localHistory),
@@ -94,6 +112,10 @@ Page({
       });
       this.loadDashboardDetails(loadId, localHistory, aggregate).catch(() => {});
     } catch (error) {
+      if (cachedAggregate) {
+        // 已用缓存渲染过，静默失败即可，下次进入再重试
+        return;
+      }
       await this.loadDashboardLegacy(loadId, localHistory);
     }
   },
@@ -544,6 +566,36 @@ function buildDashboardViewModel({ profile, entitlement, health, history, gradeH
     footerHint: buildFooterHint(entitlement, health),
     memberEntry: buildMemberEntry(entitlement)
   };
+}
+
+// dashboard 聚合缓存：5 分钟内的数据直接用于首屏渲染，后台再静默刷新
+const DASHBOARD_CACHE_TTL_MS = 5 * 60 * 1000;
+
+function readDashboardCache(essayType) {
+  try {
+    const cache = wx.getStorageSync(config.storageKeys.dashboardCache);
+    if (!cache || cache.essayType !== essayType || !cache.aggregate) {
+      return null;
+    }
+    if (Date.now() - Number(cache.savedAt || 0) > DASHBOARD_CACHE_TTL_MS) {
+      return null;
+    }
+    return cache.aggregate;
+  } catch (error) {
+    return null;
+  }
+}
+
+function writeDashboardCache(essayType, aggregate) {
+  try {
+    wx.setStorageSync(config.storageKeys.dashboardCache, {
+      essayType,
+      savedAt: Date.now(),
+      aggregate
+    });
+  } catch (error) {
+    // 存储失败不影响主流程
+  }
 }
 
 function buildMemberEntry(entitlement) {

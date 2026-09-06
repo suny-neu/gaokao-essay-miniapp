@@ -67,7 +67,8 @@ const config = {
     userId: 'gaokao-essay-user-id',
     authExpiresAt: 'gaokao-essay-auth-expires-at',
     launchChecklist: 'gaokao-essay-launch-checklist',
-    membershipState: 'gaokao-essay-membership-state'
+    membershipState: 'gaokao-essay-membership-state',
+    dashboardCache: 'gaokao-essay-dashboard-cache'
   }
 };
 
