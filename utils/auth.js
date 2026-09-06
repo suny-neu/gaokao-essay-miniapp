@@ -52,6 +52,10 @@ function clearAuthSession() {
   wx.removeStorageSync(config.storageKeys.openId);
   wx.removeStorageSync(config.storageKeys.userId);
   wx.removeStorageSync(config.storageKeys.authExpiresAt);
+  // 退出登录时一并清理本地缓存的作文历史与结果，避免共用设备泄露上一个用户的内容
+  wx.removeStorageSync(config.storageKeys.history);
+  wx.removeStorageSync(config.storageKeys.lastResult);
+  wx.removeStorageSync(config.storageKeys.membershipState);
 }
 
 function getLoginCode() {

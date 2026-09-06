@@ -80,7 +80,10 @@ function grantAdReward(nonce) {
   return requestJson(config.adRewardGrantEndpoint, {
     method: 'POST',
     data: { nonce: String(nonce || '') },
-    timeout: 10000
+    timeout: 10000,
+    headers: {
+      'X-Device-ID': getDeviceId()
+    }
   });
 }
 
@@ -272,7 +275,7 @@ async function requestRemote(payload, handlers = {}, hasRetried = false) {
           resolve(normalizeResponse(normalizedPayload, payload));
           return;
         }
-        reject(createRequestError(apiResponse.message || `请求失败：HTTP ${res.statusCode}`, apiResponse.code));
+        reject(createRequestError(apiResponse.message || friendlyHttpErrorMessage(res.statusCode), apiResponse.code));
       },
       fail(err) {
         reject(normalizeTransportError(err, `${config.apiBaseUrl}${config.endpoint}`));
@@ -299,7 +302,8 @@ async function requestJson(path, options = {}, hasRetried = false) {
       header: {
         'content-type': 'application/json',
         Authorization: authContext.token ? `Bearer ${authContext.token}` : '',
-        'X-Device-ID': getDeviceId()
+        'X-Device-ID': getDeviceId(),
+        ...(options.headers || {})
       },
       data: options.data || {},
       success(res) {
@@ -327,7 +331,7 @@ async function requestJson(path, options = {}, hasRetried = false) {
         }
 
         logRequestTiming(path, options.method || 'GET', res.statusCode, authMs, networkStartedAt, startedAt, apiResponse.code || 'HTTP_ERROR');
-        reject(createRequestError(apiResponse.message || `请求失败：HTTP ${res.statusCode}`, apiResponse.code));
+        reject(createRequestError(apiResponse.message || friendlyHttpErrorMessage(res.statusCode), apiResponse.code));
       },
       fail(err) {
         logRequestTiming(path, options.method || 'GET', 0, authMs, networkStartedAt, startedAt, 'NETWORK_ERROR');
@@ -404,7 +408,7 @@ async function uploadOcrImage(options = {}, hasRetried = false) {
           return;
         }
 
-        reject(createRequestError(apiResponse.message || `OCR 请求失败：HTTP ${res.statusCode}`, apiResponse.code));
+        reject(createRequestError(apiResponse.message || friendlyHttpErrorMessage(res.statusCode, '图片识别'), apiResponse.code));
       },
       fail(err) {
         reject(normalizeTransportError(err, `${config.apiBaseUrl}${config.ocrEndpoint}`));
@@ -443,7 +447,7 @@ function requestPublicJson(path, options = {}) {
           return;
         }
 
-        reject(createRequestError(apiResponse.message || `请求失败：HTTP ${res.statusCode}`, apiResponse.code));
+        reject(createRequestError(apiResponse.message || friendlyHttpErrorMessage(res.statusCode), apiResponse.code));
       },
       fail(err) {
         reject(normalizeTransportError(err, `${config.apiBaseUrl}${path}`));
@@ -529,7 +533,7 @@ async function ensureAuthSession(loginCode) {
         }
         const apiResponse = unwrapApiResponse(res.data || {});
         reject(createRequestError(
-          apiResponse.message || `微信登录失败：HTTP ${res.statusCode}`,
+          apiResponse.message || friendlyHttpErrorMessage(res.statusCode, '微信登录'),
           apiResponse.code || 'WECHAT_LOGIN_FAILED'
         ));
       },
@@ -919,6 +923,23 @@ function unwrapApiResponse(payload) {
     data: payload,
     message: ''
   };
+}
+
+// 把 HTTP 状态码翻译成用户能看懂的提示（后端没有返回 message 时使用）
+function friendlyHttpErrorMessage(statusCode, prefix = '') {
+  console.warn('[request] HTTP 状态码异常:', statusCode);
+  const head = prefix || '';
+  if (statusCode === 400) return head + '请求内容有误，请修改后重试';
+  if (statusCode === 401 || statusCode === 403) return head + '登录状态已失效，请退出后重新进入小程序';
+  if (statusCode === 404) return head + '服务接口不存在，请升级小程序到最新版本';
+  if (statusCode === 408) return head + '请求超时了，请稍后重试';
+  if (statusCode === 413) return head + '内容太大了，请适当删减后再提交';
+  if (statusCode === 429) return head + '操作太频繁了，请稍等片刻再试';
+  if (statusCode === 500) return head + '服务器出错了，请稍后重试';
+  if (statusCode === 502 || statusCode === 503 || statusCode === 504) {
+    return head + '服务器暂时不可用（可能正在重启或维护），请过几分钟再试';
+  }
+  return head + `请求失败（错误码 ${statusCode}），请稍后重试`;
 }
 
 function createRequestError(message, code = 'REQUEST_ERROR') {

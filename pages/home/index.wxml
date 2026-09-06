@@ -12,11 +12,21 @@
         </view>
       </view>
 
+
+      <view class="member-entry" bindtap="goMember">
+        <view class="member-entry-icon">👑</view>
+        <view class="member-entry-main">
+          <text class="member-entry-title">{{memberEntry.title}}</text>
+          <text class="member-entry-subtitle">{{memberEntry.subtitle}}</text>
+        </view>
+        <text class="member-entry-arrow">›</text>
+      </view>
       <view class="task-card">
         <view class="task-head">
           <view class="task-eyebrow">
             <view class="target-icon"><view class="target-dot"></view></view>
             <text>今日提升任务</text>
+
           </view>
         </view>
         <view class="task-body">

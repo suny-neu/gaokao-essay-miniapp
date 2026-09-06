@@ -17,7 +17,7 @@ const profileOptions = {
     enabled: true,
     serviceMode: 'http',
     apiBaseUrl: 'https://api.gaokaoessay.cn',
-    billingMode: 'disabled',
+    billingMode: 'live',
     requireHttps: true,
     adRewardAdUnitId: releaseAdUnitId
   }

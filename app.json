@@ -6,7 +6,7 @@
     "pages/tutor/index",
     "pages/result/index",
     "pages/history/index",
-    "pages/checklist/index",
+    "pages/member/index",
     "pages/editor/index",
     "pages/login/index"
   ],

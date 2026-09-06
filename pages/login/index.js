@@ -148,7 +148,7 @@ Page({
   handleLogout() {
     wx.showModal({
       title: '退出登录',
-      content: '确认退出当前微信账号？本地草稿会保留。',
+      content: '确认退出当前微信账号？退出后本机缓存的作文历史会一并清空。',
       success: (res) => {
         if (res.confirm) {
           clearAuthSession();

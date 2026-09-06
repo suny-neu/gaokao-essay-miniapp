@@ -43,7 +43,11 @@ Page({
     dailyQuotaEmpty: false,
     dailyQuotaActionEnabled: false,
     dailyQuotaActionKind: 'none',
-    entitlement: null
+    entitlement: null,
+    memberEntry: {
+      title: '会员中心',
+      subtitle: '开通会员，不限次批改与陪练'
+    }
   },
 
   onShow() {
@@ -208,6 +212,7 @@ Page({
       trendPoints: dashboard.trendPoints,
       trendSegments: dashboard.trendSegments,
       footerHint: dashboard.footerHint,
+      memberEntry: dashboard.memberEntry,
       latestGradeId: latestGrade ? latestGrade.id : '',
       latestGradeSourceType: latestGrade ? latestGrade.sourceType || 'local' : '',
       latestGradeReady: !!(latestGrade && latestGrade.content),
@@ -326,6 +331,12 @@ Page({
   goWrite() {
     wx.navigateTo({
       url: '/pages/write/index'
+    });
+  },
+
+  goMember() {
+    wx.navigateTo({
+      url: '/pages/member/index'
     });
   },
 
@@ -530,7 +541,26 @@ function buildDashboardViewModel({ profile, entitlement, health, history, gradeH
     focusCards: buildFocusCards(profile),
     trendPoints: trend.points,
     trendSegments: trend.segments,
-    footerHint: buildFooterHint(entitlement, health)
+    footerHint: buildFooterHint(entitlement, health),
+    memberEntry: buildMemberEntry(entitlement)
+  };
+}
+
+function buildMemberEntry(entitlement) {
+  if (entitlement && entitlement.subscriptionActive) {
+    return {
+      title: '会员生效中',
+      subtitle: `${entitlement.subscriptionPlanName || '会员'} · 不限次批改与陪练`
+    };
+  }
+  const remaining = entitlement && Number.isFinite(Number(entitlement.trialRemaining))
+    ? Math.max(Number(entitlement.trialRemaining), 0)
+    : null;
+  return {
+    title: '开通会员 · 不限次使用',
+    subtitle: remaining === null
+      ? '免费次数用完后，看广告或开会员继续'
+      : `免费还剩 ${remaining} 次，会员可不限次批改`
   };
 }
 

@@ -865,3 +865,43 @@
   border-bottom: 0;
   border-radius: 20rpx 20rpx 0 0;
 }
+
+/* 会员中心入口 */
+.member-entry {
+  margin-top: 24rpx;
+  padding: 24rpx 28rpx;
+  border-radius: 24rpx;
+  background: linear-gradient(135deg, #fff7e6 0%, #ffe8c2 100%);
+  border: 1rpx solid #f5d9a8;
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+}
+
+.member-entry-icon {
+  font-size: 40rpx;
+}
+
+.member-entry-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.member-entry-title {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #7a4a05;
+}
+
+.member-entry-subtitle {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  color: #a06b1c;
+}
+
+.member-entry-arrow {
+  font-size: 32rpx;
+  color: #b5832f;
+}

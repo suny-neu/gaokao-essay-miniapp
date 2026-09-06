@@ -1,0 +1,97 @@
+.member-page {
+  min-height: 100vh;
+}
+
+.member-progress {
+  margin-top: 18rpx;
+}
+
+.member-progress-track {
+  height: 14rpx;
+  border-radius: 999rpx;
+  background: var(--track);
+  overflow: hidden;
+}
+
+.member-progress-fill {
+  height: 100%;
+  border-radius: 999rpx;
+  background: linear-gradient(90deg, var(--accent) 0%, var(--accent2) 100%);
+  transition: width 0.3s ease;
+}
+
+.section-title-block {
+  display: block;
+  margin-top: 12rpx;
+}
+
+.plan-list-column {
+  flex-direction: column;
+  flex-wrap: nowrap;
+}
+
+.plan-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.plan-name-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.plan-name {
+  font-size: 30rpx;
+  font-weight: 700;
+}
+
+.plan-badge {
+  padding: 4rpx 14rpx;
+  border-radius: 999rpx;
+  background: rgba(201, 122, 89, 0.14);
+  color: #9d5e43;
+  font-size: 20rpx;
+  font-weight: 600;
+}
+
+.plan-price-box {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.plan-price {
+  font-size: 40rpx;
+  font-weight: 800;
+  color: #c2410c;
+  font-variant-numeric: tabular-nums;
+}
+
+.plan-price-unit {
+  font-size: 21rpx;
+  color: var(--muted);
+}
+
+.plan-action {
+  margin-top: 18rpx;
+  width: 100%;
+  background: linear-gradient(90deg, var(--accent) 0%, var(--accent2) 100%);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.plan-action[disabled] {
+  background: #d4d9e4;
+  color: #8a93a6;
+}
+
+.member-notice {
+  background: var(--warn-soft);
+}
+
+.member-note-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}

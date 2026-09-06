@@ -1,0 +1,60 @@
+<view class="page member-page">
+  <scroll-view scroll-y="true" class="page-scroll">
+    <view class="stack">
+      <view class="member-card">
+        <text class="eyebrow">{{entitlementCard.eyebrow}}</text>
+        <text class="card-title">{{entitlementCard.title}}</text>
+        <text class="card-text">{{entitlementCard.subtitle}}</text>
+        <view class="member-progress">
+          <view class="member-progress-track">
+            <view class="member-progress-fill" style="width: {{entitlementCard.progressPercent}}%;"></view>
+          </view>
+          <text class="micro-text">{{entitlementCard.progressLabel}}</text>
+        </view>
+        <view class="tag-row">
+          <text wx:for="{{entitlementCard.tags}}" wx:key="index" class="tag">{{item}}</text>
+        </view>
+      </view>
+
+      <view wx:if="{{purchaseHidden}}" class="member-card member-notice">
+        <text class="card-title">iOS 购买限制说明</text>
+        <text class="card-text">{{purchaseHiddenReason}}</text>
+      </view>
+
+      <text class="section-title section-title-block">选择套餐</text>
+      <view class="plan-list plan-list-column">
+        <view wx:for="{{plans}}" wx:key="planCode" class="plan-card {{item.toneClass}}">
+          <view class="plan-row">
+            <view class="plan-info">
+              <view class="plan-name-row">
+                <text class="plan-name">{{item.planName}}</text>
+                <text class="plan-badge">{{item.badgeLabel}}</text>
+              </view>
+              <text class="card-text">{{item.helperText}}</text>
+            </view>
+            <view class="plan-price-box">
+              <text class="plan-price">{{item.priceText}}</text>
+              <text class="plan-price-unit">/ {{item.durationDays}} 天</text>
+            </view>
+          </view>
+          <button
+            wx:if="{{!purchaseHidden}}"
+            class="btn plan-action"
+            disabled="{{item.actionDisabled}}"
+            data-plan-code="{{item.planCode}}"
+            bindtap="handleActivate"
+          >{{item.actionLabel}}</button>
+        </view>
+        <view wx:if="{{!plans.length && !loading}}" class="empty-text">套餐信息暂时没有拉到，下拉刷新重试。</view>
+      </view>
+
+      <view class="member-card member-note-card">
+        <text class="micro-text">{{runtimeNote}}</text>
+        <text class="micro-text">会员为一次性购买，到期后不自动续费、不自动扣款；会员权益与微信账号绑定，有效期内不限次使用批改与陪练。</text>
+      </view>
+
+      <view wx:if="{{loading}}" class="empty-text">会员信息加载中…</view>
+      <view wx:if="{{loadError}}" class="empty-text">{{loadError}}</view>
+    </view>
+  </scroll-view>
+</view>
